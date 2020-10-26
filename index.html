@@ -144,7 +144,8 @@
         function showFindCustomer() {
             $('#findCustomer').show();
             $('#selectCustomer').hide();
-            $('#filter').val('');
+            $('#
+              ').val('');
             $('#resultsBody').empty();
             $('#results').hide();
             $('#filter').focus();
@@ -156,7 +157,7 @@
                 $('#resultsBody').empty();
                 $('#searchError').hide();
 
-                var filter = $('#filter').val().trim();
+                var filter = $('#filter').val().trim().toLowerCase();
 
                 if (filter.length === 0) {
                     $('#searchError').show();
