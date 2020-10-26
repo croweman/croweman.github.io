@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
     <title>Book Keeping</title>
 
     <!-- Bootstrap -->
@@ -296,7 +295,7 @@
 
                     html += '<tr><td>' + getFormattedDate(bookEntry.when) + '</td><td>' + bookEntry.customer + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + miles + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-default" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
                     total += bookEntry.amount;
-                    totalMiles += bookEntry.miles;
+                    totalMiles += miles;
                 });
                 
                 $('#bookEntriesBody').html(html)
