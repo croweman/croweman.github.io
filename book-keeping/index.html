@@ -113,7 +113,7 @@
                 $('#bookEntry').show();
 
                 $('#customerId').val('');
-                $('#when').val('');
+                $('#when').val($('#defaultWhen').val());
                 $('#amount').val('');
                 $('#summary').val('');
             });
@@ -137,6 +137,9 @@
                     $('#createBookEntryError').show();
                     return;
                 }
+
+                if (miles === undefined || miles === null)
+                    miles = 0;
 
                 var bookEntry = {
                     customer: customerId,
@@ -286,7 +289,12 @@
                 var bookEntries = orderBookEntries(bookEntries);
 
                 bookEntries.forEach(function(bookEntry) {
-                    html += '<tr><td>' + getFormattedDate(bookEntry.when) + '</td><td>' + bookEntry.customer + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + bookEntry.miles + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-default" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
+                    var miles = bookEntry.miles;
+
+                    if (miles === undefined || miles === null)
+                        miles = 0;
+
+                    html += '<tr><td>' + getFormattedDate(bookEntry.when) + '</td><td>' + bookEntry.customer + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + miles + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-default" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
                     total += bookEntry.amount;
                     totalMiles += bookEntry.miles;
                 });
@@ -375,6 +383,10 @@
                 $('#downloadButton').click(function() {
                     download();
                 });
+
+                var date = new Date().toISOString();
+                date = date.substr(0, date.indexOf('T') + 1) + '09:00';
+                $('#defaultWhen').val(date);
             };
         }
         
@@ -385,13 +397,16 @@
         <h1>Book Keeping</h1>
 
         <div class="col-md-12">
-            <p>
-                <input type="file" id="import" name="import" class="btn btn-default" accept="application/json" onchange="openFile(event)">
-                <button id="downloadButton" type="button" class="btn btn-default">Download</button>
-                <br /><br />
-                <button id="createBookEntryModal" type="button" class="btn btn-default">Create Book Entry</button>
-                <button id="createCustomerModal" type="button" class="btn btn-default">Create Customer</button>
-            </p>
+            <input type="file" id="import" name="import" class="btn btn-default" accept="application/json" onchange="openFile(event)">
+            <button id="downloadButton" type="button" class="btn btn-default">Download</button>
+            <br /><br />
+        </div>
+        <div class="col-md-3 clear">
+            Default date:<input id="defaultWhen" type="datetime-local" class="form-control inputMargin" required="" placeholder="When">
+        </div>
+        <div class="col-md-3 clear inputMargin">
+            <button id="createBookEntryModal" type="button" class="btn btn-default">Create Book Entry</button>
+            <button id="createCustomerModal" type="button" class="btn btn-default">Create Customer</button>
         </div>
 
         <a id="downloadAnchorElem" style="display:none"></a>
@@ -478,7 +493,7 @@
             </form>
         </div>
 
-        <div id="bookEntries">
+        <div id="bookEntries" class="col-md-12 clear">
             <h3 style="padding-top: 5px">Total Amount: £<span id="total"></span></h3>
             <h3>Total Miles: <span id="totalMiles"></span></h3>
             <table class="table">
