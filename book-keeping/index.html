@@ -122,10 +122,12 @@
                 var when = $('#when').val();
                 var amount = $('#amount').val();
                 var summary = $('#summary').val();
+                var miles = $('#miles').val();
 
-                let moneyRegEx = new RegExp(/^[0-9]+\.[0-9]{2}$/);
+                let moneyRegEx = new RegExp(/^[0-9]+(\.[0-9]{2}){0,1}$/);
+                let milesRegEx = new RegExp(/^[0-9]+(\.[0-9]{1,2}){0,1}$/);
 
-                var valid = customerId.length > 0 && when.length > 0 && moneyRegEx.test(amount) && summary.length > 0;
+                var valid = customerId.length > 0 && when.length > 0 && moneyRegEx.test(amount) && milesRegEx.test(miles) && summary.length > 0;
 
                 if (!valid) {
                     $('#createBookEntryError').show();
@@ -136,7 +138,8 @@
                     customer: customerId,
                     when: new Date(when),
                     summary: summary,
-                    amount: parseFloat(amount)
+                    amount: parseFloat(amount),
+                    miles: parseFloat(miles)
                 };
 
                 addBookEntry(bookEntry, function() {
@@ -231,7 +234,7 @@
         var deleting = false;
         function deleteBookEntry(index) {
             if (deleting) return;
-            
+
             var result = confirm('Are you sure?');
 
             if (!result) return;
@@ -272,18 +275,21 @@
         function populateBookEntries() {
             var html = "";
             var total = 0;
+            var totalMiles = 0;
 
             getAllBookEntries(function(bookEntries) {
                 var bookEntries = orderBookEntries(bookEntries);
 
                 bookEntries.forEach(function(bookEntry) {
-                    html += '<tr><td>' + getFormattedDate(bookEntry.when) + '</td><td>' + bookEntry.customer + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-default" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
+                    html += '<tr><td>' + getFormattedDate(bookEntry.when) + '</td><td>' + bookEntry.customer + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + bookEntry.miles + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-default" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
                     total += bookEntry.amount;
+                    totalMiles += bookEntry.miles;
                 });
                 
                 $('#bookEntriesBody').html(html)
                 $('#bookEntries').show();
                 $('#total').html(total.toFixed(2));
+                $('#totalMiles').html(totalMiles.toFixed(2));
             });
         }
 
@@ -423,6 +429,8 @@
                         <input id="summary" class="form-control" placeholder="Enter the summary of work" required="">
                         <label for="amount" class="sr-only">Amount</label>
                         <input id="amount" class="form-control" placeholder="Enter the amount e.g. 12.95" required="">
+                        <label for="miles" class="sr-only">Miles</label>
+                        <input id="miles" class="form-control" placeholder="Miles" required="">
                         <div id="createBookEntryError" class="alert alert-danger inputMargin" role="alert">
                             Populate fields correctly!
                         </div>
@@ -466,13 +474,15 @@
         </div>
 
         <div id="bookEntries">
-            <h3>Total £<span id="total"></span></h3>
+            <h3 style="padding-top: 5px">Total Amount: £<span id="total"></span></h3>
+            <h3>Total Miles: <span id="totalMiles"></span></h3>
             <table class="table">
                 <thead>
                     <tr>
                         <th>Date</th>
                         <th>Customer</th>
                         <th>Amount</th>
+                        <th>Miles</th>
                         <th>Summary of work</th>
                         <th>Delete</th>
                     </tr>
