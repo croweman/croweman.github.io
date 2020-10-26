@@ -230,6 +230,10 @@
 
         var deleting = false;
         function deleteBookEntry(index) {
+            var result = confirm('Are you sure?');
+
+            if (!result) return;
+            
             deleting = true;
             
             var bookEntriesTransaction = db.transaction("bookEntry", "readwrite");
