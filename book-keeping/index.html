@@ -42,6 +42,8 @@
         var openRequest;
         var db;
         var miles = 0;
+        var timeOptions = [];
+        var bookEntry;
 
         function addCustomer(customer, successCallback) {
             var customersTransaction = db.transaction("customer", "readwrite");
@@ -59,6 +61,18 @@
             let request = bookEntryStore.add(bookEntry);
 
             request.onsuccess = successCallback;
+        }
+
+        function updateBookEntryRecord(bookEntry, successCallback) {
+            var bookyEntryTransaction = db.transaction("bookEntry", "readwrite");
+            var bookEntryStore = bookyEntryTransaction.objectStore('bookEntry');
+
+            let request = bookEntryStore.put(bookEntry);
+
+            request.onsuccess = successCallback;
+            request.onerror = function(err) {
+                console.log(err);
+            }
         }
 
         function createCustomer() {
@@ -109,6 +123,8 @@
 
         function createBookEntry() {
             $('#createBookEntryModal').click(function() {
+                $('#createBookEntry').show();
+                $('#updateBookEntry').hide();
                 $('#bookEntries').hide();
                 $('#createBookEntryError').hide();
                 $('#customerDetails').hide();
@@ -130,6 +146,7 @@
             $('#createBookEntry').click(function() {
                 var customerId = $('#customerId').val().trim();
                 var when = $('#when').val();
+                var whenTime = $('#whenTime').val();
                 var amount = $('#amount').val();
                 var summary = $('#summary').val();
 
@@ -147,13 +164,84 @@
 
                 var bookEntry = {
                     customer: customerId,
-                    when: new Date(when),
+                    when: new Date(when + 'T' + whenTime),
                     summary: summary,
                     amount: parseFloat(amount),
                     miles: parseFloat(miles)
                 };
 
                 addBookEntry(bookEntry, function() {
+                    $('#bookEntry').hide();
+                    $('#createBookEntryModal')[0].scrollIntoView();
+                    populateBookEntries();
+                });
+            });
+        }
+
+        function editBookEntry(id, milesVal) {
+            miles = milesVal;
+            getBookEntryById(id, function(bookEntryInstance) {
+                bookEntry = bookEntryInstance;
+                $('#bookEntries').hide();
+                $('#createBookEntryError').hide();
+                $('#customerDetails').hide();
+                $('#findCustomer').hide();
+                $('#bookEntry').show();
+                $('#createBookEntry').hide();
+                $('#updateBookEntry').show();
+
+                $('#customerId').val(bookEntry.customer);
+                var when = bookEntry.when.toISOString();
+                var date = when.substr(0, when.indexOf('T'));
+                $('#when').val(date);
+                $('#amount').val(bookEntry.amount.toString());
+                $('#summary').val(bookEntry.summary);
+
+                document.getElementById('whenTime').selectedIndex = 0;
+
+                var time = when.substr(when.indexOf('T') + 1);
+                time = time.substr(0, 5);
+
+                for (var i = 0; i < timeOptions.length; i++) {
+                    if (timeOptions[i].text === time) {
+                        document.getElementById('whenTime').selectedIndex = i;
+                        break;
+                    }
+                }
+            })
+        }
+
+        function updateBookEntry() {
+            $('#updateBookEntry').click(function() {
+                console.log('1');
+                var customerId = $('#customerId').val().trim();
+                var when = $('#when').val();
+                var whenTime = $('#whenTime').val();
+                var amount = $('#amount').val();
+                var summary = $('#summary').val();
+
+                let moneyRegEx = new RegExp(/^[0-9]+(\.[0-9]{2}){0,1}$/);
+
+                var valid = customerId.length > 0 && when.length > 0 && moneyRegEx.test(amount) && summary.length > 0;
+
+                if (!valid) {
+                    $('#createBookEntryError').show();
+                    return;
+                }
+
+                if (miles === undefined || miles === null)
+                    miles = 0;
+
+                bookEntry.customer = customerId;
+                bookEntry.when = new Date(when + 'T' + whenTime);
+                bookEntry.summary = summary;
+                bookEntry.amount = parseFloat(amount);
+                bookEntry.miles = parseFloat(miles);
+
+                console.log('here', bookEntry);
+
+                updateBookEntryRecord(bookEntry, function() {
+                    console.log('here2');
                     $('#bookEntry').hide();
                     $('#createBookEntryModal')[0].scrollIntoView();
                     populateBookEntries();
@@ -284,6 +372,16 @@
             };
         }
 
+        function getBookEntryById(id, successCallback) {
+            var bookEntriesTransaction = db.transaction("bookEntry", "readwrite");
+            var bookEntriesStore = bookEntriesTransaction.objectStore('bookEntry');
+            var record = bookEntriesStore.get(id);
+
+            record.onsuccess = function() {
+                successCallback(record.result);
+            };
+        }
+
         function populateBookEntries() {
             var html = "";
             var total = 0;
@@ -298,7 +396,7 @@
                     if (miles === undefined || miles === null)
                         miles = 0;
 
-                    html += '<tr><td>' + getFormattedDate(bookEntry.when) + '</td><td>' + bookEntry.customer + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + miles + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-default" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
+                    html += '<tr><td>' + getFormattedDate(bookEntry.when) + '</td><td>' + bookEntry.customer + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + miles + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-default" onclick="editBookEntry(' + bookEntry.id  + ', ' + miles + ')">Edit</button></td><td><button type="button" class="btn btn-default" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
                     total += bookEntry.amount;
                     totalMiles += miles;
                 });
@@ -381,6 +479,7 @@
 
                 createCustomer();
                 createBookEntry();
+                updateBookEntry();
                 findCustomer();
                 populateBookEntries();
 
@@ -391,6 +490,8 @@
                 var date = new Date().toISOString();
                 date = date.substr(0, date.indexOf('T'));
                 $('#defaultWhen').val(date);
+
+                timeOptions = document.getElementById('whenTime').options;
             };
         }
         
@@ -512,6 +613,7 @@
                             Populate fields correctly!
                         </div>
                         <button id="createBookEntry" type="button" class="btn btn-default inputMargin" type="submit">Add Book Entry</button>
+                        <button id="updateBookEntry" type="button" class="btn btn-default inputMargin" type="submit">Update Book Entry</button>
                     </div>
                 </div>
             </form>
@@ -561,6 +663,7 @@
                         <th>Amount</th>
                         <th>Miles</th>
                         <th>Summary of work</th>
+                        <th>Edit</th>
                         <th>Delete</th>
                     </tr>
                 </thead>
