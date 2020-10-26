@@ -36,13 +36,26 @@
         }
     </style>
     <script type="text/JavaScript">
-        var state = {
-            lastId: 1,
-            customers: [],
-            bookEntries: []
-        };
+        var openRequest;
+        var db;
 
-        var localStorage = window.localStorage;
+        function addCustomer(customer, successCallback) {
+            var customersTransaction = db.transaction("customer", "readwrite");
+            var customersStore = customersTransaction.objectStore('customer');
+
+            let request = customersStore.add(customer);
+
+            request.onsuccess = successCallback;
+        }
+
+        function addBookEntry(bookEntry, successCallback) {
+            var bookyEntryTransaction = db.transaction("bookEntry", "readwrite");
+            var bookEntryStore = bookyEntryTransaction.objectStore('bookEntry');
+
+            let request = bookEntryStore.add(bookEntry);
+
+            request.onsuccess = successCallback;
+        }
 
         function createCustomer() {
             $('#createCustomerModal').click(function() {
@@ -70,21 +83,18 @@
                     return;
                 }
 
-                state.customers.push({
-                    id: state.lastId,
+                var customer = {
                     name: name,
                     addressLine1: addressLine1,
                     town: town,
                     postcode: postcode,
                     full: (name + addressLine1 + town + postcode).toLowerCase()
+                };
+                
+                addCustomer(customer, function() {
+                    $('#customerDetails').hide();
+                    $('#createBookEntryModal')[0].scrollIntoView();
                 });
-
-                state.lastId = state.lastId + 1;
-
-                updateStorage();
-
-                $('#customerDetails').hide();
-                $('#createBookEntryModal')[0].scrollIntoView();
             });
         }
 
@@ -122,22 +132,18 @@
                     return;
                 }
 
-                state.bookEntries.push({
+                var bookEntry = {
                     customer: customerId,
-                    when: when,
+                    when: new Date(when),
                     summary: summary,
                     amount: parseFloat(amount)
+                };
+
+                addBookEntry(bookEntry, function() {
+                    $('#bookEntry').hide();
+                    $('#createBookEntryModal')[0].scrollIntoView();
+                    populateBookEntries();
                 });
-
-                orderBookEntries();
-
-                updateStorage();
-
-                $('#bookEntry').hide();
-
-                $('#createBookEntryModal')[0].scrollIntoView();
-
-                populateBookEntries();
             });
         }
 
@@ -165,24 +171,20 @@
 
                 var html = '';
 
-                var customers = [];
+                getAllCustomers(function(customers) {
+                    customers = customers.filter(function(item) {return item.full.indexOf(filter) !== -1; });
 
-                state.customers.forEach(function(customer) {
-                    if (customer.full.indexOf(filter) !== -1) {
-                        customers.push(customer);
+                    customers.forEach(function(customer) {
+                        html += '<tr><td><input type="radio" name="customerradio" value="' + customer.id + '" data-summary="' + customer.name + ', ' + customer.addressLine1 + ', ' + customer.town + '"></td><td>' + customer.name  + '</td><td>' + customer.addressLine1  + '</td><td>' + customer.town + '</td></tr>';
+                    });
+
+                    $('#results').show();
+                    $('#resultsBody').append(html);
+
+                    if (customers.length > 0) {
+                        $('#selectCustomer').show();
                     }
                 });
-
-                customers.forEach(function(customer) {
-                    html += '<tr><td><input type="radio" name="customerradio" value="' + customer.id + '" data-summary="' + customer.name + ', ' + customer.addressLine1 + ', ' + customer.town + '"></td><td>' + customer.name  + '</td><td>' + customer.addressLine1  + '</td><td>' + customer.town + '</td></tr>';
-                });
-
-                $('#results').show();
-                $('#resultsBody').append(html);
-
-                if (customers.length > 0) {
-                    $('#selectCustomer').show();
-                }
             });
 
             $('#selectCustomer').click(function() {
@@ -198,14 +200,14 @@
             });
         }
 
-        function orderBookEntries() {
-            
-            var sortedBookEntries = state.bookEntries.sort(function(a, b){
-                return new Date(b.when) - new Date(a.when); 
+        function orderBookEntries(bookEntries) {
+            // could probably be done via an index somehow on query!!!!!!!!!!
+            var sortedBookEntries = bookEntries.sort(function(a, b){
+                return b.when - a.when; 
                 }
             );
 
-            state.bookEntries = sortedBookEntries;
+            return sortedBookEntries;
         }
 
         function getFormattedDate(date) {
@@ -229,53 +231,75 @@
         var deleting = false;
         function deleteBookEntry(index) {
             deleting = true;
-            state.bookEntries.splice(index, 1);
-            updateStorage();
-            populateBookEntries();
-            deleting = false;
+            
+            var bookEntriesTransaction = db.transaction("bookEntry", "readwrite");
+            var bookEntriesStore = bookEntriesTransaction.objectStore('bookEntry');
+
+            var request = bookEntriesStore.delete(index);
+
+            request.onsuccess = function(event) {
+                populateBookEntries();
+                deleting = false;
+            };
+        }
+
+        function getAllBookEntries(successCallback) {
+            var bookEntriesTransaction = db.transaction("bookEntry", "readwrite");
+            var bookEntriesStore = bookEntriesTransaction.objectStore('bookEntry');
+            var allRecords = bookEntriesStore.getAll();
+
+            allRecords.onsuccess = function() {
+                successCallback(allRecords.result);
+            };
+        }
+
+        function getAllCustomers(successCallback) {
+            var customersTransaction = db.transaction("customer", "readwrite");
+            var customersStore = customersTransaction.objectStore('customer');
+            var allRecords = customersStore.getAll();
+
+            allRecords.onsuccess = function() { 
+                successCallback(allRecords.result);
+            };
         }
 
         function populateBookEntries() {
-            
             var html = "";
             var total = 0;
 
-            var index = -1;
-            state.bookEntries.forEach(function(bookEntry) {
-                index++;
-                html += '<tr><td>' + getFormattedDate(new Date(bookEntry.when)) + '</td><td>' + bookEntry.customer + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-default" onclick="deleteBookEntry(' + index  + ')">Delete</button></td></tr>';
-                total += bookEntry.amount;
+            getAllBookEntries(function(bookEntries) {
+                var bookEntries = orderBookEntries(bookEntries);
+
+                bookEntries.forEach(function(bookEntry) {
+                    html += '<tr><td>' + getFormattedDate(bookEntry.when) + '</td><td>' + bookEntry.customer + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-default" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
+                    total += bookEntry.amount;
+                });
+                
+                $('#bookEntriesBody').html(html)
+                $('#bookEntries').show();
+                $('#total').html(total.toFixed(2));
             });
-            
-            $('#bookEntriesBody').html(html)
-            $('#bookEntries').show();
-            $('#total').html(total.toFixed(2));
-        }
-
-        function updateStorage() {
-            //localStorage.setItem("BookEntries", JSON.stringify(state));
-        }
-
-        function getFromStorage() {
-            // var storedState = localStorage.getItem("BookEntries");
-
-            // if (storedState !== undefined && storedState !== null) {
-            //     state = JSON.parse(storedState);
-            // } else {
-            //     updateStorage();
-            // }
         }
 
         function download() {
-            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
-            var dlAnchorElem = document.getElementById('downloadAnchorElem');
-            dlAnchorElem.setAttribute("href", dataStr);
-            var name = getFormattedDate(new Date());
-            name = name.replace(' ', '_');
-            name = name.replace(':', '-');
-            name = name.replace(/\//g, '-');
-            dlAnchorElem.setAttribute('download', 'book-entries-' + name + '.json');
-            dlAnchorElem.click();
+            getAllBookEntries(function(bookEntries) {
+                getAllCustomers(function(customers) {
+                    var data = {
+                        bookEntries: bookEntries,
+                        customers: customers
+                    };
+
+                    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+                    var dlAnchorElem = document.getElementById('downloadAnchorElem');
+                    dlAnchorElem.setAttribute("href", dataStr);
+                    var name = getFormattedDate(new Date());
+                    name = name.replace(' ', '_');
+                    name = name.replace(':', '-');
+                    name = name.replace(/\//g, '-');
+                    dlAnchorElem.setAttribute('download', 'book-entries-' + name + '.json');
+                    dlAnchorElem.click();
+                })
+            });
         }
 
         function openFile(event) {
@@ -284,7 +308,25 @@
             var reader = new FileReader();
             reader.onload = function() {
                 var json = reader.result;
-                state = JSON.parse(json);
+                var state = JSON.parse(json);
+
+                var customersTransaction = db.transaction("customer", "readwrite");
+                var customersStore = customersTransaction.objectStore('customer');
+                customersStore.clear();
+
+                state.customers.forEach(function(customer) {
+                    addCustomer(customer, function() {});
+                })
+
+                var bookyEntryTransaction = db.transaction("bookEntry", "readwrite");
+                var bookEntryStore = bookyEntryTransaction.objectStore('bookEntry');
+                bookEntryStore.clear();
+
+                state.bookEntries.forEach(function(bookEntry) {
+                    bookEntry.when = new Date(bookEntry.when);
+                    addBookEntry(bookEntry, function() {});
+                })
+
                 populateBookEntries();
             };
 
@@ -292,15 +334,31 @@
         };
 
         function initialise() {
-            getFromStorage();
-            createCustomer();
-            createBookEntry();
-            findCustomer();
-            populateBookEntries();
+            openRequest = indexedDB.open('BookKeeping', 1);
+            
+            openRequest.onupgradeneeded = function() {
+                db = openRequest.result;
+                if (!db.objectStoreNames.contains('customer')) {
+                    var store = db.createObjectStore('customer', { keyPath: 'id', autoIncrement: true });
+                    store.createIndex('full', ['full'], { unique:false });
+                }
 
-            $('#downloadButton').click(function() {
-                download();
-            });
+                if (!db.objectStoreNames.contains('bookEntry'))
+                    db.createObjectStore('bookEntry', { keyPath: 'id', autoIncrement: true });
+            };
+
+            openRequest.onsuccess = function() {
+                db = openRequest.result;
+
+                createCustomer();
+                createBookEntry();
+                findCustomer();
+                populateBookEntries();
+
+                $('#downloadButton').click(function() {
+                    download();
+                });
+            };
         }
         
     </script>
