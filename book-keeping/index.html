@@ -310,6 +310,7 @@
             $('#findCustomer').hide();
             $('#bookEntry').show();
             $('#customerId').val(id + ' - ' + input.data().summary);
+            $('#createBookEntryError').hide();
             miles = parseFloat(input.data().miles)
         };
 
@@ -604,7 +605,7 @@
             <br /><br />
         </div>
         <div class="col-md-3 clear">
-            Default date:<input id="defaultWhen" type="date" class="form-control inputMargin" required="" placeholder="When">
+            <strong>Default date:</strong><input id="defaultWhen" type="date" class="form-control inputMargin" required="" placeholder="When">
         </div>
         <div class="col-md-12 clear inputMargin marginBottom">
             <button id="createBookEntryModal" type="button" class="btn btn-default btn-primary">Entry +</button>
