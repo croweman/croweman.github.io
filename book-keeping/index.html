@@ -37,6 +37,10 @@
         input[type=file] {
             display: inline-block;
         }
+
+        body {
+            margin-bottom: 20px;
+        }
     </style>
     <script type="text/JavaScript">
         var openRequest;
@@ -44,6 +48,10 @@
         var miles = 0;
         var timeOptions = [];
         var bookEntry;
+        var allCustomers = [];
+        var monthNames = ["January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
 
         function addCustomer(customer, successCallback) {
             var customersTransaction = db.transaction("customer", "readwrite");
@@ -70,9 +78,6 @@
             let request = bookEntryStore.put(bookEntry);
 
             request.onsuccess = successCallback;
-            request.onerror = function(err) {
-                console.log(err);
-            }
         }
 
         function createCustomer() {
@@ -83,8 +88,8 @@
                 $('#createCustomerError').hide();
                 $('#name').val('');
                 $('#addressLine1').val('');
-                $('#town').val('');
-                $('#postcode').val('.');
+                $('#town').val('March');
+                $('#postcode').val('-');
                 $('#miles').val('0');
                 $('#customerDetails').show();
                 $('#name').focus();
@@ -115,8 +120,11 @@
                 };
                 
                 addCustomer(customer, function() {
-                    $('#customerDetails').hide();
-                    $('#createBookEntryModal')[0].scrollIntoView();
+                    getAllCustomers(function(customers) {
+                        allCustomers = customers;
+                        $('#customerDetails').hide();
+                        $('#createBookEntryModal')[0].scrollIntoView();
+                    });
                 });
             });
         }
@@ -173,7 +181,7 @@
                 addBookEntry(bookEntry, function() {
                     $('#bookEntry').hide();
                     $('#createBookEntryModal')[0].scrollIntoView();
-                    populateBookEntries();
+                    populateBookEntries([ bookEntry ]);
                 });
             });
         }
@@ -213,7 +221,6 @@
 
         function updateBookEntry() {
             $('#updateBookEntry').click(function() {
-                console.log('1');
                 var customerId = $('#customerId').val().trim();
                 var when = $('#when').val();
                 var whenTime = $('#whenTime').val();
@@ -238,10 +245,7 @@
                 bookEntry.amount = parseFloat(amount);
                 bookEntry.miles = parseFloat(miles);
 
-                console.log('here', bookEntry);
-
                 updateBookEntryRecord(bookEntry, function() {
-                    console.log('here2');
                     $('#bookEntry').hide();
                     $('#createBookEntryModal')[0].scrollIntoView();
                     populateBookEntries();
@@ -251,7 +255,6 @@
 
         function showFindCustomer() {
             $('#findCustomer').show();
-            $('#selectCustomer').hide();
             $('#filter').val('');
             $('#resultsBody').empty();
             $('#results').hide();
@@ -260,48 +263,39 @@
         }
 
         function findCustomer() {
-            $('#search').click(function() {
-                $('#resultsBody').empty();
-                $('#searchError').hide();
+            $('#resultsBody').empty();
+            $('#searchError').hide();
 
-                var filter = $('#filter').val().trim().toLowerCase();
+            var filter = $('#filter').val().trim().toLowerCase();
 
-                if (filter.length === 0) {
-                    $('#searchError').show();
-                    return;
-                }
+            if (filter.length === 0) {
+                return;
+            }
 
-                var html = '';
+            var html = '';
 
-                getAllCustomers(function(customers) {
-                    customers = customers.filter(function(item) {return item.full.indexOf(filter) !== -1; });
+            var customers = allCustomers.filter(function(item) {return item.full.indexOf(filter) !== -1; });
 
-                    customers.forEach(function(customer) {
-                        html += '<tr><td><input type="radio" name="customerradio" value="' + customer.id + '" data-miles="' + customer.miles + '" data-summary="' + customer.name + ', ' + customer.addressLine1 + ', ' + customer.town + '"></td><td>' + customer.name  + '</td><td>' + customer.addressLine1  + '</td><td>' + customer.town + '</td></tr>';
-                    });
-
-                    $('#results').show();
-                    $('#resultsBody').append(html);
-
-                    if (customers.length > 0) {
-                        $('#selectCustomer').show();
-                    }
-                });
+            customers.forEach(function(customer) {
+                html += '<tr><td><input type="radio" name="customerradio" onclick="javascript:selectChosenCustomer();" value="' + customer.id + '" data-miles="' + customer.miles + '" data-summary="' + customer.name + ', ' + customer.addressLine1 + ', ' + customer.town + '"></td><td>' + customer.name  + '</td><td>' + customer.addressLine1  + '</td><td>' + customer.town + '</td></tr>';
             });
 
-            $('#selectCustomer').click(function() {
-                var input = $("input:radio[name='customerradio']:checked");
-
-                var id = input.val();
-
-                if (id === undefined) return;
-
-                $('#findCustomer').hide();
-                $('#bookEntry').show();
-                $('#customerId').val(id + ' - ' + input.data().summary);
-                miles = parseFloat(input.data().miles)
-            });
+            $('#results').show();
+            $('#resultsBody').append(html);
         }
+
+        function selectChosenCustomer() {
+            var input = $("input:radio[name='customerradio']:checked");
+
+            var id = input.val();
+
+            if (id === undefined) return;
+
+            $('#findCustomer').hide();
+            $('#bookEntry').show();
+            $('#customerId').val(id + ' - ' + input.data().summary);
+            miles = parseFloat(input.data().miles)
+        };
 
         function orderBookEntries(bookEntries) {
             // could probably be done via an index somehow on query!!!!!!!!!!
@@ -382,30 +376,104 @@
             };
         }
 
-        function populateBookEntries() {
+        function getDateLabel(date) {
+            return monthNames[date.getMonth()] + ' ' + date.getFullYear();
+        }
+
+        function toggleTable(tableId) {
+            var visible = $('#' + tableId + ':visible').length > 0;
+            
+            var buttonText = $('#' + tableId + 'Button').text();
+
+            if (visible) {
+                $('#' + tableId).hide();
+                buttonText = buttonText.substr(0, buttonText.length - 1) + '+';
+            } else {
+                $('#' + tableId).show();
+                buttonText = buttonText.substr(0, buttonText.length - 1) + '-';
+            }
+
+            $('#' + tableId + 'Button').text(buttonText);
+        }
+
+        function populateBookEntries(providedBookEntries) {
+            $('#bookEntry').hide();
+            $('#customerDetails').hide();
+            $('#findCustomer').hide();
+            $('#bookEntries').show();
+
+            $('#bookEntriesSummary').show();
+
             var html = "";
             var total = 0;
             var totalMiles = 0;
 
-            getAllBookEntries(function(bookEntries) {
+            function callback(bookEntries) {
                 var bookEntries = orderBookEntries(bookEntries);
 
+                var data = {};
+                var keys = [];
+
+                // group book entries by month year
                 bookEntries.forEach(function(bookEntry) {
-                    var miles = bookEntry.miles;
+                    var key = getDateLabel(bookEntry.when);
+                    
+                    if (!data[key]) {
+                        data[key] = [];
+                        keys.push(key);
+                    }
 
-                    if (miles === undefined || miles === null)
-                        miles = 0;
-
-                    html += '<tr><td>' + getFormattedDate(bookEntry.when) + '</td><td>' + bookEntry.customer + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + miles + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-default" onclick="editBookEntry(' + bookEntry.id  + ', ' + miles + ')">Edit</button></td><td><button type="button" class="btn btn-default" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
-                    total += bookEntry.amount;
-                    totalMiles += miles;
+                    data[key].push(bookEntry);
                 });
-                
+
+                var expand = true;
+
+                keys.forEach(function(key) {
+                    var currentTotal = 0;
+                    var currentMiles = 0;
+
+                    data[key].forEach(function(bookEntry) {
+                        var miles = bookEntry.miles;
+
+                        if (miles === undefined || miles === null)
+                            miles = 0;
+
+                        total += bookEntry.amount;
+                        currentTotal += bookEntry.amount;
+                        totalMiles += miles;
+                        currentMiles += miles;
+                    });
+
+                    var tableId = key.replace(' ', '');
+                    var entries = data[key].length;
+                    var buttonAdditionalText = '&nbsp;&nbsp;(' + entries + ' ' + (entries === 1 ? 'entry' : 'entries') + ')';
+
+                    html += '<div class="form-group"><button id="' + tableId + 'Button"class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample" onclick="toggleTable(\'' + tableId + '\')">' + key + ' ' + buttonAdditionalText + ' ' + (expand ? '-' : '+') + '</button></div>';
+                    html += '<div id="' + tableId + '"' + (expand ? '' : ' style="display:none"') + ' class="form-group"><label>Amount: £' + currentTotal.toFixed(2) + '</label><br /><label>Miles: ' + currentMiles.toFixed(2) + '</label>';
+                    html += '<table class="table"><thead><tr><th>Date</th><th>Customer</th><th>Amount</th><th>Miles</th><th>Summary of work</th><th>Edit</th><th>Delete</th></tr></thead><tbody>';
+
+                    data[key].forEach(function(bookEntry) {
+                        html += '<tr><td>' + getFormattedDate(bookEntry.when) + '</td><td>' + bookEntry.customer + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + miles + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-default" onclick="editBookEntry(' + bookEntry.id  + ', ' + miles + ')">Edit</button></td><td><button type="button" class="btn btn-default" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
+                    });
+
+                    html += '</tbody></table></div>';
+                    expand = false;
+                });
+
                 $('#bookEntriesBody').html(html)
                 $('#bookEntries').show();
                 $('#total').html(total.toFixed(2));
                 $('#totalMiles').html(totalMiles.toFixed(2));
-            });
+            }
+
+            if (providedBookEntries !== undefined) {
+                $('#bookEntriesSummary').hide();
+                callback(providedBookEntries);
+                return;
+            }
+
+            getAllBookEntries(callback);
+            
         }
 
         function download() {
@@ -492,6 +560,16 @@
                 $('#defaultWhen').val(date);
 
                 timeOptions = document.getElementById('whenTime').options;
+
+                var timeout;
+                $('#filter').on('keyup input', function() {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(findCustomer, 150);
+                });
+
+                getAllCustomers(function(customers) {
+                    allCustomers = customers;
+                });
             };
         }
         
@@ -509,9 +587,10 @@
         <div class="col-md-3 clear">
             Default date:<input id="defaultWhen" type="date" class="form-control inputMargin" required="" placeholder="When">
         </div>
-        <div class="col-md-3 clear inputMargin marginBottom">
+        <div class="col-md-12 clear inputMargin marginBottom">
             <button id="createBookEntryModal" type="button" class="btn btn-default">Create Book Entry</button>
             <button id="createCustomerModal" type="button" class="btn btn-default">Create Customer</button>
+            <button id="showAllBookEntries" type="button" class="btn btn-default" onclick="javascript:populateBookEntries();">All Entries</button>
         </div>
         
         <a id="downloadAnchorElem" style="display:none"></a>
@@ -522,17 +601,27 @@
                         <h3 class="panel-title">Customer Details</h3>
                     </div>
                     <div class="panel-body">
-                        <label for="inputEmail" class="sr-only">Name</label>
-                        <input id="name" class="form-control" placeholder="Name" required="" autofocus="">
-                        <label for="addressLine1" class="sr-only">Address Line 1</label>
-                        <input id="addressLine1" class="form-control inputMargin" placeholder="Address Line 1" required="">
-                        <label for="town" class="sr-only">Town</label>
-                        <input id="town" class="form-control inputMargin" placeholder="Town" required="">
-                        <label for="postcode" class="sr-only">Address Line 1</label>
-                        <input id="postcode" class="form-control inputMargin" placeholder="Postcode" required="" onClick="this.select();">
-                        <label for="miles" class="sr-only">Miles</label>
-                        <input id="miles" class="form-control inputMargin" placeholder="Miles" required="" onClick="this.select();">
-                        <div id="createCustomerError" class="alert alert-danger inputMargin" role="alert">
+                        <div class="form-group">
+                            <label for="name">Name</label>
+                            <input id="name" class="form-control" required="" autofocus="">
+                        </div>
+                        <div class="form-group">
+                            <label for="addressLine1">Address Line 1</label>
+                            <input id="addressLine1" class="form-control" required="" onClick="this.select();">
+                        </div>
+                        <div class="form-group">
+                            <label for="town">Town</label>
+                            <input id="town" class="form-control" required="" onClick="this.select();">
+                        </div>
+                        <div class="form-group">
+                            <label for="postcode">Address Line 1</label>
+                            <input id="postcode" class="form-control" required="" onClick="this.select();">
+                        </div>
+                        <div class="form-group">
+                            <label for="miles">Miles</label>
+                            <input id="miles" class="form-control" required="" onClick="this.select();">
+                        </div>
+                        <div id="createCustomerError" class="alert alert-danger" role="alert">
                             Populate fields correctly!
                         </div>
                         <button id="createCustomer" type="button" class="btn btn-default inputMargin" type="submit">Add Customer</button>
@@ -548,12 +637,14 @@
                         <h3 class="panel-title">Book entry</h3>
                     </div>
                     <div class="panel-body">
-                        <label for="customerId" class="sr-only">Customer</label>
-                        <input id="customerId" class="form-control" placeholder="Click here to find a customer" required="" readonly="readonly">
-                        <label for="when" class="sr-only">When</label>
-                        <div class="col-md-4" style="margin-bottom: 5px">
-                            <input id="when" type="date" class="form-control inputMargin" required="" placeholder="When">
-                            <select id="whenTime" class="form-control inputMargin">
+                        <div class="form-group">
+                            <label for="customerId">Customer</label>
+                            <input id="customerId" class="form-control" required="" readonly="readonly">
+                        </div>
+                        <div class="form-group">
+                            <label for="when">When</label>
+                            <input id="when" type="date" class="form-control" required="">
+                            <select id="whenTime" class="form-control" style="margin-top: 8px;">
                                 <option>09:00</option>
                                 <option>09:15</option>
                                 <option>09:30</option>
@@ -605,11 +696,15 @@
                                 <option>21:00</option>
                             </select>
                         </div>
-                        <label for="summary" class="sr-only">Summary of work</label>
-                        <input id="summary" class="form-control inputMargin" placeholder="Enter the summary of work" required="">
-                        <label for="amount" class="sr-only">Amount</label>
-                        <input id="amount" class="form-control inputMargin" placeholder="Enter the amount e.g. 12.95" required="">
-                        <div id="createBookEntryError" class="alert alert-danger inputMargin" role="alert">
+                        <div class="form-group">
+                            <label for="summary">Summary of work</label>
+                            <input id="summary" class="form-control" required="" onClick="this.select();">
+                        </div>
+                        <div class="form-group">
+                            <label for="amount">Amount (e.g. 12.95)</label>
+                            <input id="amount" class="form-control"required="" onClick="this.select();">
+                        </div>
+                        <div id="createBookEntryError" class="alert alert-danger" role="alert">
                             Populate fields correctly!
                         </div>
                         <button id="createBookEntry" type="button" class="btn btn-default inputMargin" type="submit">Add Book Entry</button>
@@ -626,11 +721,9 @@
                         <h3 class="panel-title">Find Customer</h3>
                     </div>
                     <div class="panel-body">
-                        <label for="filter" class="sr-only">Filter</label>
-                        <input id="filter" class="form-control" placeholder="Enter search filter" required="" autofocus="">
-                        <button id="search" type="button" class="btn btn-default inputMargin">Search</button>
-                        <div id="searchError" class="alert alert-danger inputMargin" role="alert">
-                            Enter a search filter!
+                        <div class="form-group">
+                            <label for="filter" class="sr-only">Search filter</label>
+                            <input id="filter" class="form-control" required="" autofocus="">
                         </div>
                         <div id="results">
                             <table class="table">
@@ -646,30 +739,17 @@
                                 </tbody>
                             </table>
                         </div>
-                        <button id="selectCustomer" type="button" class="btn btn-default inputMargin">Select customer</button>
                     </div>
                 </div>
             </form>
         </div>
 
         <div id="bookEntries" class="col-md-12 clear">
-            <h3 style="padding-top: 5px">Total Amount: £<span id="total"></span></h3>
-            <h3>Total Miles: <span id="totalMiles"></span></h3>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Customer</th>
-                        <th>Amount</th>
-                        <th>Miles</th>
-                        <th>Summary of work</th>
-                        <th>Edit</th>
-                        <th>Delete</th>
-                    </tr>
-                </thead>
-                <tbody id="bookEntriesBody">
-                </tbody>
-            </table>
+            <div id="bookEntriesSummary">
+                <h4 style="padding-top: 5px">Total Amount: £<span id="total"></span></h4>
+                <h4>Total Miles: <span id="totalMiles"></span></h4>
+            </div>
+            <div id="bookEntriesBody"></div>
         </div>
     </div>
 
