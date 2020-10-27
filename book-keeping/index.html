@@ -181,7 +181,7 @@
                 addBookEntry(bookEntry, function() {
                     $('#bookEntry').hide();
                     $('#createBookEntryModal')[0].scrollIntoView();
-                    populateBookEntries([ bookEntry ]);
+                    populateBookEntries([ bookEntry ], true);
                 });
             });
         }
@@ -396,7 +396,7 @@
             $('#' + tableId + 'Button').text(buttonText);
         }
 
-        function populateBookEntries(providedBookEntries) {
+        function populateBookEntries(providedBookEntries, removeCollapseButton) {
             $('#bookEntry').hide();
             $('#customerDetails').hide();
             $('#findCustomer').hide();
@@ -414,7 +414,6 @@
                 var data = {};
                 var keys = [];
 
-                // group book entries by month year
                 bookEntries.forEach(function(bookEntry) {
                     var key = getDateLabel(bookEntry.when);
                     
@@ -448,7 +447,10 @@
                     var entries = data[key].length;
                     var buttonAdditionalText = '&nbsp;&nbsp;(' + entries + ' ' + (entries === 1 ? 'entry' : 'entries') + ')';
 
-                    html += '<div class="form-group"><button id="' + tableId + 'Button"class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample" onclick="toggleTable(\'' + tableId + '\')">' + key + ' ' + buttonAdditionalText + ' ' + (expand ? '-' : '+') + '</button></div>';
+                    if (!removeCollapseButton) {
+                        html += '<div class="form-group"><button id="' + tableId + 'Button"class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample" onclick="toggleTable(\'' + tableId + '\')">' + key + ' ' + buttonAdditionalText + ' ' + (expand ? '-' : '+') + '</button></div>';
+                    }
+                    
                     html += '<div id="' + tableId + '"' + (expand ? '' : ' style="display:none"') + ' class="form-group"><label>Amount: £' + currentTotal.toFixed(2) + '</label><br /><label>Miles: ' + currentMiles.toFixed(2) + '</label>';
                     html += '<table class="table"><thead><tr><th>Date</th><th>Customer</th><th>Amount</th><th>Miles</th><th>Summary of work</th><th>Edit</th><th>Delete</th></tr></thead><tbody>';
 
@@ -564,7 +566,7 @@
                 var timeout;
                 $('#filter').on('keyup input', function() {
                     clearTimeout(timeout);
-                    timeout = setTimeout(findCustomer, 150);
+                    timeout = setTimeout(findCustomer, 100);
                 });
 
                 getAllCustomers(function(customers) {
