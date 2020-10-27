@@ -194,7 +194,8 @@
                     miles: parseFloat(miles)
                 };
 
-                addBookEntry(bookEntry, function() {
+                addBookEntry(bookEntry, function(e) {
+                    bookEntry.id = e.target.result;
                     $('#bookEntry').hide();
                     $('#createBookEntryModal')[0].scrollIntoView();
                     populateBookEntries([ bookEntry ], true);
