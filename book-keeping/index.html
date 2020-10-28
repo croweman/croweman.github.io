@@ -218,9 +218,10 @@
                         var numberOfBookEntriesUpdated = 0;
 
                         bookEntries.forEach(function(bookEntry) {
-                            if (!bookEntry.customer.startsWith(customer.id + ' - ')) return;
+                            if (bookEntry.customerId !== customer.id) return;
                             
-                            bookEntry.customer = customer.id + ' - ' + customer.name + ', ' + customer.addressLine1 + ', ' + customer.town;
+                            bookEntry.customerId = customer.id;
+                            bookEntry.customer = customer.name + ', ' + customer.addressLine1 + ', ' + customer.town;
                             bookEntry.miles = customer.miles;
 
                             numberOfBookEntriesToUpdate++;
@@ -255,19 +256,21 @@
                 $('#bookEntry').show();
 
                 $('#customerId').val('');
+                $('#customer').val('');
                 $('#when').val(defaultWhen);
                 document.getElementById('whenTime').selectedIndex = 0;
                 $('#amount').val('');
                 $('#summary').val('');
             });
 
-            $('#customerId').click(function() {
+            $('#customer').click(function() {
                 $('#bookEntry').hide();
                 showFindCustomer();
             });
 
             $('#createBookEntry').click(function() {
                 var customerId = $('#customerId').val().trim();
+                var customer = $('#customer').val().trim();
                 var when = $('#when').val();
                 var whenTime = $('#whenTime').val();
                 var amount = $('#amount').val();
@@ -286,7 +289,8 @@
                     miles = 0;
 
                 var bookEntry = {
-                    customer: customerId,
+                    customer: customer,
+                    customerId: parseInt(customerId),
                     when: new Date(when + 'T' + whenTime),
                     summary: summary,
                     amount: parseFloat(amount),
@@ -315,7 +319,8 @@
                 $('#customers').hide();
                 $('#updateBookEntry').show();
 
-                $('#customerId').val(bookEntry.customer);
+                $('#customerId').val(bookEntry.customerId);
+                $('#customer').val(bookEntry.customer);
                 var when = bookEntry.when.toISOString();
                 var date = when.substr(0, when.indexOf('T'));
                 $('#when').val(date);
@@ -339,6 +344,7 @@
         function updateBookEntry() {
             $('#updateBookEntry').click(function() {
                 var customerId = $('#customerId').val().trim();
+                var customer = $('#customer').val().trim();
                 var when = $('#when').val();
                 var whenTime = $('#whenTime').val();
                 var amount = $('#amount').val();
@@ -356,7 +362,8 @@
                 if (miles === undefined || miles === null)
                     miles = 0;
 
-                bookEntry.customer = customerId;
+                bookEntry.customer = customer;
+                bookEntry.customerId = parseInt(customerId);
                 bookEntry.when = new Date(when + 'T' + whenTime);
                 bookEntry.summary = summary;
                 bookEntry.amount = parseFloat(amount);
@@ -430,7 +437,9 @@
 
             $('#findCustomer').hide();
             $('#bookEntry').show();
-            $('#customerId').val(id + ' - ' + input.data().summary);
+            // here
+            $('#customerId').val(id);
+            $('#customer').val(input.data().summary);
             $('#createBookEntryError').hide();
             miles = parseFloat(input.data().miles)
         };
@@ -727,38 +736,65 @@
             openRequest.onsuccess = function() {
                 db = openRequest.result;
 
-                createCustomer();
-                createBookEntry();
-                updateBookEntry();
-                updateCustomer();
-                findCustomer();
-                populateBookEntries();
+                migrate(function() {
+                    createCustomer();
+                    createBookEntry();
+                    updateBookEntry();
+                    updateCustomer();
+                    findCustomer();
+                    populateBookEntries();
 
-                $('#downloadButton').click(function() {
-                    download();
-                });
+                    $('#downloadButton').click(function() {
+                        download();
+                    });
 
-                var date = new Date().toISOString();
-                date = date.substr(0, date.indexOf('T'));
-                $('#defaultWhen').val(date);
+                    var date = new Date().toISOString();
+                    date = date.substr(0, date.indexOf('T'));
+                    $('#defaultWhen').val(date);
 
-                timeOptions = document.getElementById('whenTime').options;
+                    timeOptions = document.getElementById('whenTime').options;
 
-                var timeout;
-                $('#filter').on('keyup input', function() {
-                    clearTimeout(timeout);
-                    timeout = setTimeout(findCustomer, 100);
-                });
+                    var timeout;
+                    $('#filter').on('keyup input', function() {
+                        clearTimeout(timeout);
+                        timeout = setTimeout(findCustomer, 100);
+                    });
 
-                $('#customerFilter').on('keyup input', function() {
-                    clearTimeout(timeout);
-                    timeout = setTimeout(findCustomer2, 100);
-                });
+                    $('#customerFilter').on('keyup input', function() {
+                        clearTimeout(timeout);
+                        timeout = setTimeout(findCustomer2, 100);
+                    });
 
-                getAllCustomers(function(customers) {
-                    allCustomers = customers;
+                    getAllCustomers(function(customers) {
+                        allCustomers = customers;
+                    });
                 });
             };
+        }
+
+        function migrate(callback) {
+            //callback();return;
+            getAllBookEntries(function(bookEntries) {
+                var numberOfBookEntriesToMigrate = 0;
+                var numberOfBookEntriesMigrated = 0;
+
+                bookEntries.forEach(function(bookEntry) {
+                    var customer = bookEntry.customer;
+                    var index = customer.indexOf(' - ');
+                    if (index === -1) return;
+                    numberOfBookEntriesToMigrate++;
+                    bookEntry.customerId = parseInt(customer.substr(0, index));
+                    bookEntry.customer = customer.substr(index + 3);
+                    updateBookEntryRecord(bookEntry, function() { numberOfBookEntriesMigrated++; });
+                });
+
+                var interval = setInterval(() => {
+                    if (numberOfBookEntriesMigrated === numberOfBookEntriesToMigrate) {
+                        clearInterval(interval);
+                        callback();
+                    }
+                }, 100);
+            });
         }
 
         function customers() {
@@ -857,9 +893,13 @@
                         <h3 class="panel-title">Book entry</h3>
                     </div>
                     <div class="panel-body">
-                        <div class="form-group">
-                            <label for="customerId">Customer</label>
+                        <div class="form-group" style="display: none">
+                            <label for="customerId">Customer Id</label>
                             <input id="customerId" class="form-control" required="" readonly="readonly">
+                        </div>
+                        <div class="form-group">
+                            <label for="customer">Customer</label>
+                            <input id="customer" class="form-control" required="" readonly="readonly">
                         </div>
                         <div class="form-group">
                             <label for="when">When</label>
