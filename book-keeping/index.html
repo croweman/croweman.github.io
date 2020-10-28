@@ -319,7 +319,7 @@
                 var when = bookEntry.when.toISOString();
                 var date = when.substr(0, when.indexOf('T'));
                 $('#when').val(date);
-                $('#amount').val(bookEntry.amount.toString());
+                $('#amount').val(bookEntry.amount.toFixed(2));
                 $('#summary').val(bookEntry.summary);
 
                 document.getElementById('whenTime').selectedIndex = 0;
@@ -620,10 +620,10 @@
                     }
                     
                     html += '<div id="' + tableId + '"' + (expand ? '' : ' style="display:none"') + ' class="form-group"><label>Amount: £' + currentTotal.toFixed(2) + '</label><br /><label>Miles: ' + currentMiles.toFixed(2) + '</label>';
-                    html += '<table class="table"><thead><tr><th>Date</th><th>Customer</th><th>Amount</th><th>Miles</th><th>Summary of work</th><th>Edit</th><th>Delete</th></tr></thead><tbody>';
+                    html += '<table class="table"><thead><tr><th>Date</th><th>Customer</th><th>Amount</th><th>Miles</th><th>Summary of work</th><th>Delete</th></tr></thead><tbody>';
 
                     data[key].forEach(function(bookEntry) {
-                        html += '<tr><td>' + getFormattedDate(bookEntry.when) + '</td><td>' + bookEntry.customer + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + miles + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-default" onclick="editBookEntry(' + bookEntry.id  + ', ' + miles + ')">Edit</button></td><td><button type="button" class="btn btn-default" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
+                        html += '<tr><td><a href="javascript:editBookEntry(' + bookEntry.id  + ', ' + bookEntry.miles + ')">' + getFormattedDate(bookEntry.when) + '</a></td><td>' + bookEntry.customer + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + bookEntry.miles.toFixed(2) + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-default" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
                     });
 
                     html += '</tbody></table></div>';
@@ -785,7 +785,7 @@
         }
 
         function getCustomerRow(customer) {
-            return '<tr><td>' + customer.name  + '</td><td>' + customer.addressLine1  + '</td><td>' + customer.town + '</td><td>' + customer.postcode + '</td><td>' + customer.miles + '</td><td><button type="button" class="btn btn-default" onclick="editCustomer(' + customer.id  + ', ' + miles + ')">Edit</button></td></tr>';
+            return '<tr><td><a href="javascript:editCustomer(' + customer.id + ')">' + customer.name  + '<a/></td><td>' + customer.addressLine1  + '</td><td>' + customer.town + '</td><td>' + customer.postcode + '</td><td>' + customer.miles + '</td></tr>';
         }
 
         function tools() {
@@ -992,7 +992,6 @@
                                 <th>Town</th>
                                 <th>Postcode</th>
                                 <th>Miles</th>
-                                <th>Edit</th>
                             </tr>
                         </thead>
                         <tbody id="customersBody">
