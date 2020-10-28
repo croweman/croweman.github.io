@@ -26,7 +26,7 @@
         .marginBottom {
             margin-bottom: 5px;
         }
-        #customerDetails, #createCustomerError, #searchError, #results, #findCustomer, #createBookEntryError {
+        #customerDetails, #createCustomerError, #searchError, #results, #findCustomer, #createBookEntryError, #tools {
             display: none;
         }
 
@@ -57,6 +57,13 @@
         .has-success .form-control {
             border-color: #5cb85c;
         }
+
+        .navbar-brand-item {
+            font-size: 15px;
+            padding-left: 5px;
+            padding-right: 5px;
+            padding-top: 16px;
+        }
     </style>
     <script type="text/JavaScript">
         var openRequest;
@@ -64,6 +71,7 @@
         var miles = 0;
         var timeOptions = [];
         var bookEntry;
+        var customer;
         var allCustomers = [];
         var monthNames = ["January", "February", "March", "April", "May", "June",
             "July", "August", "September", "October", "November", "December"
@@ -97,17 +105,29 @@
             request.onsuccess = successCallback;
         }
 
+        function updateCustomerRecord(customer, successCallback) {
+            var customerTransaction = db.transaction("customer", "readwrite");
+            var customerStore = customerTransaction.objectStore('customer');
+
+            let request = customerStore.put(customer);
+
+            request.onsuccess = successCallback;
+        }
+
         function createCustomer() {
             $('#createCustomerModal').click(function() {
                 $('#bookEntries').hide();
                 $('#bookEntry').hide();
                 $('#findCustomer').hide();
                 $('#createCustomerError').hide();
+                $('#customers').hide();
                 $('#name').val('');
                 $('#addressLine1').val('');
                 $('#town').val('March');
                 $('#postcode').val('-');
                 $('#miles').val('0');
+                $('#createCustomer').show();
+                $('#updateCustomer').hide();
                 $('#customerDetails').show();
                 $('#name').focus();
             });
@@ -146,6 +166,83 @@
             });
         }
 
+        function editCustomer(id) {
+            getCustomerById(id, function(customerInstance) {
+                customer = customerInstance;
+                $('#bookEntries').hide();
+                $('#createCustomerError').hide();
+                $('#customerDetails').hide();
+                $('#findCustomer').hide();
+                $('#bookEntry').hide();
+                $('#createBookEntry').hide();
+                $('#customers').hide();
+
+                $('#createCustomer').hide();
+                $('#updateCustomer').show();
+                $('#customerDetails').show();
+
+                $('#name').val(customer.name);
+                $('#addressLine1').val(customer.addressLine1);
+                $('#town').val(customer.town);
+                $('#postcode').val(customer.postcode);
+                $('#miles').val(customer.miles);
+            });
+        }
+
+        function updateCustomer() {
+            $('#updateCustomer').click(function() {
+                var name = $('#name').val().trim();
+                var addressLine1 = $('#addressLine1').val().trim();
+                var town = $('#town').val().trim();
+                var postcode = $('#postcode').val().trim();
+                var miles = $('#miles').val().trim();
+
+                let milesRegEx = new RegExp(/^[0-9]+(\.[0-9]{1,2}){0,1}$/);
+
+                if (name.length === 0 || addressLine1.length === 0 || town.length === 0 || postcode.length === 0 || !milesRegEx.test(miles)) {
+                    $('#createCustomerError').show();
+                    return;
+                }
+
+                customer.name = name;
+                customer.addressLine1 = addressLine1;
+                customer.town = town;
+                customer.postcode = postcode;
+                customer.miles = parseFloat(miles);
+                customer.full = (name + addressLine1 + town + postcode).toLowerCase();
+
+                updateCustomerRecord(customer, function() {
+
+                    getAllBookEntries(function(bookEntries) {
+                        var numberOfBookEntriesToUpdate = 0;
+                        var numberOfBookEntriesUpdated = 0;
+
+                        bookEntries.forEach(function(bookEntry) {
+                            if (!bookEntry.customer.startsWith(customer.id + ' - ')) return;
+                            
+                            bookEntry.customer = customer.id + ' - ' + customer.name + ', ' + customer.addressLine1 + ', ' + customer.town;
+                            bookEntry.miles = customer.miles;
+
+                            numberOfBookEntriesToUpdate++;
+
+                            updateBookEntryRecord(bookEntry, function() {
+                                numberOfBookEntriesUpdated++;
+                            });
+                        });
+                    
+                        var interval = setInterval(() => {
+                            if (numberOfBookEntriesUpdated === numberOfBookEntriesToUpdate) {
+                                clearInterval(interval);
+                                $('#customerDetails').hide();
+                                $('#createBookEntryModal')[0].scrollIntoView();
+                                customers();
+                            }
+                        }, 100);
+                    });
+                });
+            });
+        }
+
         function createBookEntry() {
             $('#createBookEntryModal').click(function() {
                 $('#createBookEntry').show();
@@ -154,6 +251,7 @@
                 $('#createBookEntryError').hide();
                 $('#customerDetails').hide();
                 $('#findCustomer').hide();
+                $('#customers').hide();
                 $('#bookEntry').show();
 
                 $('#customerId').val('');
@@ -214,6 +312,7 @@
                 $('#findCustomer').hide();
                 $('#bookEntry').show();
                 $('#createBookEntry').hide();
+                $('#customers').hide();
                 $('#updateBookEntry').show();
 
                 $('#customerId').val(bookEntry.customer);
@@ -266,7 +365,7 @@
                 updateBookEntryRecord(bookEntry, function() {
                     $('#bookEntry').hide();
                     $('#createBookEntryModal')[0].scrollIntoView();
-                    populateBookEntries();
+                    populateBookEntries([ bookEntry ], true);
                 });
             });
         }
@@ -300,6 +399,26 @@
 
             $('#results').show();
             $('#resultsBody').append(html);
+        }
+
+        function findCustomer2() {
+            $('#customersBody').empty();
+
+            var filter = $('#customerFilter').val().trim().toLowerCase();
+
+            if (filter.length === 0) {
+                return;
+            }
+
+            var html = '';
+
+            var customers = allCustomers.filter(function(item) {return item.full.indexOf(filter) !== -1; });
+
+            customers.forEach(function(customer) {
+                html += getCustomerRow(customer);
+            });
+
+            $('#customersBody').append(html);
         }
 
         function selectChosenCustomer() {
@@ -414,6 +533,16 @@
             };
         }
 
+        function getCustomerById(id, successCallback) {
+            var customerTransaction = db.transaction("customer", "readwrite");
+            var customerStore = customerTransaction.objectStore('customer');
+            var record = customerStore.get(id);
+
+            record.onsuccess = function() {
+                successCallback(record.result);
+            };
+        }
+
         function getDateLabel(date) {
             return monthNames[date.getMonth()] + ' ' + date.getFullYear();
         }
@@ -438,6 +567,7 @@
             $('#bookEntry').hide();
             $('#customerDetails').hide();
             $('#findCustomer').hide();
+            $('#customers').hide();
             $('#bookEntries').show();
 
             $('#bookEntriesSummary').show();
@@ -512,8 +642,7 @@
                 return;
             }
 
-            getAllBookEntries(callback);
-            
+            getAllBookEntries(callback);   
         }
 
         function download() {
@@ -542,6 +671,7 @@
 
             var reader = new FileReader();
             reader.onload = function() {
+                $('#bookEntries').hide();
                 var json = reader.result;
                 var state = JSON.parse(json);
 
@@ -549,9 +679,15 @@
                 var customersStore = customersTransaction.objectStore('customer');
                 customersStore.clear();
 
+                var numberOfCustomers = 0;
+                var numberOfCustomersImported = 0;
+                var numberOfBookEntries = 0;
+                var numberOfBookEntriesImported = 0;
+
                 state.customers.forEach(function(customer) {
-                    addCustomer(customer, function() {});
-                })
+                    addCustomer(customer, function() { numberOfCustomersImported++; });
+                    numberOfCustomers++;
+                });
 
                 var bookyEntryTransaction = db.transaction("bookEntry", "readwrite");
                 var bookEntryStore = bookyEntryTransaction.objectStore('bookEntry');
@@ -559,10 +695,16 @@
 
                 state.bookEntries.forEach(function(bookEntry) {
                     bookEntry.when = new Date(bookEntry.when);
-                    addBookEntry(bookEntry, function() {});
+                    addBookEntry(bookEntry, function() { numberOfBookEntriesImported++; });
+                    numberOfBookEntries++;
                 })
 
-                populateBookEntries();
+                var interval = setInterval(() => {
+                    if (numberOfCustomersImported === numberOfCustomers && numberOfBookEntriesImported === numberOfBookEntries) {
+                        clearInterval(interval);
+                        populateBookEntries();
+                    }
+                }, 100);
             };
 
             reader.readAsText(input.files[0]);
@@ -588,6 +730,7 @@
                 createCustomer();
                 createBookEntry();
                 updateBookEntry();
+                updateCustomer();
                 findCustomer();
                 populateBookEntries();
 
@@ -607,10 +750,46 @@
                     timeout = setTimeout(findCustomer, 100);
                 });
 
+                $('#customerFilter').on('keyup input', function() {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(findCustomer2, 100);
+                });
+
                 getAllCustomers(function(customers) {
                     allCustomers = customers;
                 });
             };
+        }
+
+        function customers() {
+            $('#bookEntry').hide();
+            $('#customerDetails').hide();
+            $('#findCustomer').hide();
+            $('#bookEntries').hide();
+            $('#customerFilter').val('');
+            $('#customers').show();
+
+            $('#customersBody').empty();
+
+            getAllCustomers(function(customers) {
+                allCustomers = customers;
+
+                var html = '';
+
+                customers.forEach(function(customer) {
+                    html += getCustomerRow(customer);
+                });
+
+                $('#customersBody').append(html);
+            });
+        }
+
+        function getCustomerRow(customer) {
+            return '<tr><td>' + customer.name  + '</td><td>' + customer.addressLine1  + '</td><td>' + customer.town + '</td><td>' + customer.postcode + '</td><td>' + customer.miles + '</td><td><button type="button" class="btn btn-default" onclick="editCustomer(' + customer.id  + ', ' + miles + ')">Edit</button></td></tr>';
+        }
+
+        function tools() {
+            $('#tools').toggle();
         }
         
     </script>
@@ -619,8 +798,11 @@
       <div class="col-md-12" style="padding-left: 0">
         <nav class="navbar navbar-expand-lg navbar-light bg-light" style="background-color: #292b2c; border-radius: 0">
             <a class="navbar-brand" href="#" style="color:white">Book Keeping</a>
+            <a class="navbar-brand navbar-brand-item" href="#" style="color:white" onclick="javascript:populateBookEntries();">Entries</a>
+            <a class="navbar-brand navbar-brand-item" href="#" style="color:white" onclick="javascript:customers();">Customers</a>
+            <a class="navbar-brand navbar-brand-item" href="#" style="color:white" onclick="javascript:tools();">Tools</a>
         </nav>
-        <div class="col-md-12">
+        <div id="tools" class="col-md-12">
             <input type="file" id="import" name="import" class="btn btn-default" accept="application/json" onchange="openFile(event)">
             <button id="downloadButton" type="button" class="btn btn-default btn-primary">Download</button>
             <br /><br />
@@ -628,7 +810,6 @@
         <div class="col-md-12 clear inputMargin marginBottom">
             <button id="createBookEntryModal" type="button" class="btn btn-default btn-primary">Entry +</button>
             <button id="createCustomerModal" type="button" class="btn btn-default btn-primary">Customer +</button>
-            <button id="showAllBookEntries" type="button" class="btn btn-default btn-primary" onclick="javascript:populateBookEntries();">All Entries</button>
         </div>
         
         <a id="downloadAnchorElem" style="display:none"></a>
@@ -663,6 +844,7 @@
                             Populate fields correctly!
                         </div>
                         <button id="createCustomer" type="button" class="btn btn-default btn-primary inputMargin" type="submit">Add Customer</button>
+                        <button id="updateCustomer" type="button" class="btn btn-default btn-primary inputMargin" type="submit">Update Customer</button>
                     </div>
                 </div>
             </form>
@@ -789,6 +971,36 @@
             </div>
             <div id="bookEntriesBody"></div>
         </div>
+    </div>
+
+    <div id="customers" class="col-md-12 clear">
+        <form autocomplete="off">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Customers</h3>
+                </div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <label for="customerFilter">Search filter</label>
+                        <input id="customerFilter" class="form-control" required="" autofocus="">
+                    </div>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Address line 1</th>
+                                <th>Town</th>
+                                <th>Postcode</th>
+                                <th>Miles</th>
+                                <th>Edit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customersBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </form>
     </div>
 
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
