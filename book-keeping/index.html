@@ -736,65 +736,38 @@
             openRequest.onsuccess = function() {
                 db = openRequest.result;
 
-                migrate(function() {
-                    createCustomer();
-                    createBookEntry();
-                    updateBookEntry();
-                    updateCustomer();
-                    findCustomer();
-                    populateBookEntries();
+                createCustomer();
+                createBookEntry();
+                updateBookEntry();
+                updateCustomer();
+                findCustomer();
+                populateBookEntries();
 
-                    $('#downloadButton').click(function() {
-                        download();
-                    });
+                $('#downloadButton').click(function() {
+                    download();
+                });
 
-                    var date = new Date().toISOString();
-                    date = date.substr(0, date.indexOf('T'));
-                    $('#defaultWhen').val(date);
+                var date = new Date().toISOString();
+                date = date.substr(0, date.indexOf('T'));
+                $('#defaultWhen').val(date);
 
-                    timeOptions = document.getElementById('whenTime').options;
+                timeOptions = document.getElementById('whenTime').options;
 
-                    var timeout;
-                    $('#filter').on('keyup input', function() {
-                        clearTimeout(timeout);
-                        timeout = setTimeout(findCustomer, 100);
-                    });
+                var timeout;
+                $('#filter').on('keyup input', function() {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(findCustomer, 100);
+                });
 
-                    $('#customerFilter').on('keyup input', function() {
-                        clearTimeout(timeout);
-                        timeout = setTimeout(findCustomer2, 100);
-                    });
+                $('#customerFilter').on('keyup input', function() {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(findCustomer2, 100);
+                });
 
-                    getAllCustomers(function(customers) {
-                        allCustomers = customers;
-                    });
+                getAllCustomers(function(customers) {
+                    allCustomers = customers;
                 });
             };
-        }
-
-        function migrate(callback) {
-            //callback();return;
-            getAllBookEntries(function(bookEntries) {
-                var numberOfBookEntriesToMigrate = 0;
-                var numberOfBookEntriesMigrated = 0;
-
-                bookEntries.forEach(function(bookEntry) {
-                    var customer = bookEntry.customer;
-                    var index = customer.indexOf(' - ');
-                    if (index === -1) return;
-                    numberOfBookEntriesToMigrate++;
-                    bookEntry.customerId = parseInt(customer.substr(0, index));
-                    bookEntry.customer = customer.substr(index + 3);
-                    updateBookEntryRecord(bookEntry, function() { numberOfBookEntriesMigrated++; });
-                });
-
-                var interval = setInterval(() => {
-                    if (numberOfBookEntriesMigrated === numberOfBookEntriesToMigrate) {
-                        clearInterval(interval);
-                        callback();
-                    }
-                }, 100);
-            });
         }
 
         function customers() {
