@@ -26,7 +26,7 @@
         .marginBottom {
             margin-bottom: 5px;
         }
-        #customerDetails, #createCustomerError, #searchError, #results, #findCustomer, #createBookEntryError, #tools {
+        #customerDetails, #createCustomerError, #searchError, #results, #findCustomer, #createBookEntryError, #tools, #expense, #expenses, #customers {
             display: none;
         }
 
@@ -64,6 +64,20 @@
             padding-right: 5px;
             padding-top: 16px;
         }
+
+        .topNavDropDownItem {
+            color: white!important;
+        }
+
+        .createButtons, #expensesButtons {
+            margin-bottom: 20px;
+            margin-left: 0; 
+            padding-left: 0;
+        }
+
+        #dateFitlering {
+            margin-top: -15px;
+        }
     </style>
     <script type="text/JavaScript">
         var openRequest;
@@ -77,12 +91,63 @@
             "July", "August", "September", "October", "November", "December"
         ];
         var defaultWhen = getWhen(new Date());
+        var costPerMile = 0.45;
+        var currentView = 'entries';
+
+        function updateValidationIndicator(id, valid) {
+            if (valid) {
+                $('#' + id + 'Container').addClass('has-success');
+            } else {
+                $('#' + id + 'Container').addClass('has-danger');
+            }
+        }
+
+        function hasValue(value) {
+            return value.trim().length > 0;
+        }
+
+        function hasValidMoneyValue(value) {
+            let moneyRegEx = new RegExp(/^[0-9]+(\.[0-9]{2}){0,1}$/);
+
+            return moneyRegEx.test(value);
+        }
+
+        function hasValidMilesValue(value) {
+            let milesRegEx = new RegExp(/^[0-9]+(\.[0-9]{1,2}){0,1}$/);
+
+            return milesRegEx.test(value);
+        }
+
+        function validate(id, validation) {
+            var value = $('#' + id).val();
+            var valid = validation(value);
+            updateValidationIndicator(id, valid);
+        }
+
+        function addValidation(id, validation) {
+            $('#' + id).blur(function() {
+                validate(id, validation);
+            });
+
+            $('#' + id).change(function() {
+                validate(id, validation);
+            });
+        }
 
         function addCustomer(customer, successCallback) {
             var customersTransaction = db.transaction("customer", "readwrite");
             var customersStore = customersTransaction.objectStore('customer');
 
             let request = customersStore.add(customer);
+
+            request.onsuccess = successCallback;
+        }
+
+        function addSetting(setting, successCallback) {
+            var settingTransaction = db.transaction("settings", "readwrite");
+            var settingStore = settingTransaction.objectStore('settings');
+
+            let request = settingStore.add(setting);
 
             request.onsuccess = successCallback;
         }
@@ -96,11 +161,20 @@
             request.onsuccess = successCallback;
         }
 
+        function addExpense(expense, successCallback) {
+            var expenseTransaction = db.transaction("expenses", "readwrite");
+            var expenseStore = expenseTransaction.objectStore('expenses');
+
+            var request = expenseStore.add(expense);
+
+            request.onsuccess = successCallback;
+        }
+
         function updateBookEntryRecord(bookEntry, successCallback) {
             var bookyEntryTransaction = db.transaction("bookEntry", "readwrite");
             var bookEntryStore = bookyEntryTransaction.objectStore('bookEntry');
 
-            let request = bookEntryStore.put(bookEntry);
+            var request = bookEntryStore.put(bookEntry);
 
             request.onsuccess = successCallback;
         }
@@ -109,13 +183,58 @@
             var customerTransaction = db.transaction("customer", "readwrite");
             var customerStore = customerTransaction.objectStore('customer');
 
-            let request = customerStore.put(customer);
+            var request = customerStore.put(customer);
 
             request.onsuccess = successCallback;
         }
 
+        function updateSettingRecord(setting, successCallback) {
+            var settingTransaction = db.transaction("settings", "readwrite");
+            var settingStore = settingTransaction.objectStore('settings');
+
+            var request = settingStore.put(setting);
+
+            request.onsuccess = successCallback;
+        }
+
+        function updateExpenseRecord(expense, successCallback) {
+            var expenseTransaction = db.transaction('expenses', 'readwrite');
+            var expenseStore = expenseTransaction.objectStore('expenses');
+
+            var request = expenseStore.put(expense);
+            
+            request.onsuccess = successCallback;
+        }
+
+        function dateFiltersChanged() {
+            if (currentView === 'entries') {
+                populateBookEntries();
+            }
+
+            if (currentView === 'expenses') {
+                expenses();
+            }
+        }
+
+        function dateFilters() {
+            $('#fromDate').change(function() {
+                dateFiltersChanged();
+            });
+
+            $('#toDate').change(function() {
+                dateFiltersChanged();
+            });
+        }
+
         function createCustomer() {
-            $('#createCustomerModal').click(function() {
+
+            addValidation('name', hasValue);
+            addValidation('addressLine1', hasValue);
+            addValidation('town', hasValue);
+            addValidation('postcode', hasValue);
+            addValidation('miles', hasValidMilesValue);
+
+            function createCustomerModalClick() {
                 $('#bookEntries').hide();
                 $('#bookEntry').hide();
                 $('#findCustomer').hide();
@@ -129,8 +248,18 @@
                 $('#createCustomer').show();
                 $('#updateCustomer').hide();
                 $('#customerDetails').show();
+
+                removeValidationStatus('name');
+                removeValidationStatus('addressLine1');
+                removeValidationStatus('town');
+                removeValidationStatus('postcode');
+                removeValidationStatus('miles');
+
                 $('#name').focus();
-            });
+            }
+
+            $('#createCustomerModal').click(createCustomerModalClick);
+            $('#createCustomerModal2').click(createCustomerModalClick);
 
             $('#createCustomer').click(function() {
                 $('#createCustomerError').hide();
@@ -142,8 +271,14 @@
 
                 let milesRegEx = new RegExp(/^[0-9]+(\.[0-9]{1,2}){0,1}$/);
 
+                validate('name', hasValue);
+                validate('addressLine1', hasValue);
+                validate('town', hasValue);
+                validate('postcode', hasValue);
+                validate('miles', hasValidMilesValue);
+
                 if (name.length === 0 || addressLine1.length === 0 || town.length === 0 || postcode.length === 0 || !milesRegEx.test(miles)) {
-                    $('#createCustomerError').show();
+                    //$('#createCustomerError').show();
                     return;
                 }
 
@@ -157,10 +292,11 @@
                 };
                 
                 addCustomer(customer, function() {
-                    getAllCustomers(function(customers) {
-                        allCustomers = customers;
+                    getAllCustomers(function(custs) {
+                        allCustomers = custs;
                         $('#customerDetails').hide();
-                        $('#createBookEntryModal')[0].scrollIntoView();
+                        $('#dateFitlering')[0].scrollIntoView();
+                        customers();
                     });
                 });
             });
@@ -186,6 +322,14 @@
                 $('#town').val(customer.town);
                 $('#postcode').val(customer.postcode);
                 $('#miles').val(customer.miles);
+
+                removeValidationStatus('name');
+                removeValidationStatus('addressLine1');
+                removeValidationStatus('town');
+                removeValidationStatus('postcode');
+                removeValidationStatus('miles');
+
+                $('#name').focus();
             });
         }
 
@@ -199,8 +343,14 @@
 
                 let milesRegEx = new RegExp(/^[0-9]+(\.[0-9]{1,2}){0,1}$/);
 
+                validate('name', hasValue);
+                validate('addressLine1', hasValue);
+                validate('town', hasValue);
+                validate('postcode', hasValue);
+                validate('miles', hasValidMilesValue);
+
                 if (name.length === 0 || addressLine1.length === 0 || town.length === 0 || postcode.length === 0 || !milesRegEx.test(miles)) {
-                    $('#createCustomerError').show();
+                    //$('#createCustomerError').show();
                     return;
                 }
 
@@ -235,7 +385,7 @@
                             if (numberOfBookEntriesUpdated === numberOfBookEntriesToUpdate) {
                                 clearInterval(interval);
                                 $('#customerDetails').hide();
-                                $('#createBookEntryModal')[0].scrollIntoView();
+                                $('#dateFitlering')[0].scrollIntoView();
                                 customers();
                             }
                         }, 100);
@@ -245,6 +395,12 @@
         }
 
         function createBookEntry() {
+
+            addValidation('customer', hasValue);
+            addValidation('when', hasValue);
+            addValidation('summary', hasValue);
+            addValidation('amount', hasValidMoneyValue);
+
             $('#createBookEntryModal').click(function() {
                 $('#createBookEntry').show();
                 $('#updateBookEntry').hide();
@@ -255,12 +411,18 @@
                 $('#customers').hide();
                 $('#bookEntry').show();
 
+                removeValidationStatus('customer');
+                removeValidationStatus('when');
+                removeValidationStatus('amount');
+                removeValidationStatus('summary');
+
                 $('#customerId').val('');
                 $('#customer').val('');
                 $('#when').val(defaultWhen);
                 document.getElementById('whenTime').selectedIndex = 0;
                 $('#amount').val('');
                 $('#summary').val('');
+                $('#when').focus();
             });
 
             $('#customer').click(function() {
@@ -278,10 +440,15 @@
 
                 let moneyRegEx = new RegExp(/^[0-9]+(\.[0-9]{2}){0,1}$/);
 
+                validate('customer', hasValue);
+                validate('when', hasValue);
+                validate('summary', hasValue);
+                validate('amount', hasValidMoneyValue);
+
                 var valid = customerId.length > 0 && when.length > 0 && moneyRegEx.test(amount) && summary.length > 0;
 
                 if (!valid) {
-                    $('#createBookEntryError').show();
+                    //$('#createBookEntryError').show();
                     return;
                 }
 
@@ -300,7 +467,7 @@
                 addBookEntry(bookEntry, function(e) {
                     bookEntry.id = e.target.result;
                     $('#bookEntry').hide();
-                    $('#createBookEntryModal')[0].scrollIntoView();
+                    $('#dateFitlering')[0].scrollIntoView();
                     populateBookEntries([ bookEntry ], true);
                 });
             });
@@ -338,6 +505,13 @@
                         break;
                     }
                 }
+
+                removeValidationStatus('customer');
+                removeValidationStatus('when');
+                removeValidationStatus('amount');
+                removeValidationStatus('summary');
+
+                $('#when').focus();
             })
         }
 
@@ -352,10 +526,15 @@
 
                 let moneyRegEx = new RegExp(/^[0-9]+(\.[0-9]{2}){0,1}$/);
 
+                validate('customer', hasValue);
+                validate('when', hasValue);
+                validate('summary', hasValue);
+                validate('amount', hasValidMoneyValue);
+
                 var valid = customerId.length > 0 && when.length > 0 && moneyRegEx.test(amount) && summary.length > 0;
 
                 if (!valid) {
-                    $('#createBookEntryError').show();
+                    //$('#createBookEntryError').show();
                     return;
                 }
 
@@ -371,7 +550,7 @@
 
                 updateBookEntryRecord(bookEntry, function() {
                     $('#bookEntry').hide();
-                    $('#createBookEntryModal')[0].scrollIntoView();
+                    $('#dateFitlering')[0].scrollIntoView();
                     populateBookEntries([ bookEntry ], true);
                 });
             });
@@ -383,7 +562,7 @@
             $('#resultsBody').empty();
             $('#results').hide();
             $('#filter').focus();
-            $('#createBookEntryModal')[0].scrollIntoView();
+            $('#dateFitlering')[0].scrollIntoView();
         }
 
         function findCustomer() {
@@ -428,6 +607,11 @@
             $('#customersBody').append(html);
         }
 
+        function removeValidationStatus(id) {
+            $('#' + id + 'Container').removeClass('has-success')
+            $('#' + id + 'Container').removeClass('has-danger')
+        }
+
         function selectChosenCustomer() {
             var input = $("input:radio[name='customerradio']:checked");
 
@@ -437,21 +621,180 @@
 
             $('#findCustomer').hide();
             $('#bookEntry').show();
-            // here
+    
             $('#customerId').val(id);
             $('#customer').val(input.data().summary);
+            removeValidationStatus('customer');
+            $('#customerContainer').addClass('has-success')
             $('#createBookEntryError').hide();
             miles = parseFloat(input.data().miles)
         };
 
-        function orderBookEntries(bookEntries) {
-            // could probably be done via an index somehow on query!!!!!!!!!!
-            var sortedBookEntries = bookEntries.sort(function(a, b){
-                return b.when - a.when; 
-                }
-            );
+        function createExpense() {
 
-            return sortedBookEntries;
+            addValidation('expenseWhen', hasValue);
+            addValidation('expenseSupplier', hasValue);
+            addValidation('expenseSummary', hasValue);
+            addValidation('expenseAmount', hasValidMoneyValue);
+            addValidation('expenseMiles', hasValidMilesValue);
+
+            $('#createExpenseModal').click(function() {
+                $('#createBookEntry').show();
+                $('#updateBookEntry').hide();
+                $('#bookEntries').hide();
+                $('#createBookEntryError').hide();
+                $('#createExpenseError').hide();
+                $('#customerDetails').hide();
+                $('#findCustomer').hide();
+                $('#customers').hide();
+                $('#bookEntry').hide();
+                $('#createExpense').show();
+                $('#updateExpense').hide();
+                $('#expenses').hide();
+
+                $('#expense').show();
+
+                var date = new Date().toISOString();
+                date = date.substr(0, date.indexOf('T'));
+                $('#expenseWhen').val(date);
+                $('#expenseSupplier').val('');
+                $('#expenseAmount').val('');
+                $('#expenseSummary').val('');
+                $('#expenseMiles').val('0');
+
+                $('#expenseWhen').focus();
+
+                removeValidationStatus('expenseWhen');
+                removeValidationStatus('expenseSupplier');
+                removeValidationStatus('expenseSummary');
+                removeValidationStatus('expenseAmount');
+                removeValidationStatus('expenseMiles');
+            });
+
+            $('#createExpense').click(function() {
+                var when = $('#expenseWhen').val();
+                var amount = $('#expenseAmount').val();
+                var supplier = $('#expenseSupplier').val();
+                var summary = $('#expenseSummary').val();
+                var miles = $('#expenseMiles').val().trim();
+
+                let milesRegEx = new RegExp(/^[0-9]+(\.[0-9]{1,2}){0,1}$/);
+                let moneyRegEx = new RegExp(/^[0-9]+(\.[0-9]{2}){0,1}$/);
+
+                validate('expenseWhen', hasValue);
+                validate('expenseSupplier', hasValue);
+                validate('expenseSummary', hasValue);
+                validate('expenseAmount', hasValidMoneyValue);
+                validate('expenseMiles', hasValidMilesValue);
+
+                var valid = when.length > 0 && supplier.length > 0 && summary.length > 0 && moneyRegEx.test(amount) && milesRegEx.test(miles);
+
+                if (!valid) {
+                    //$('#createExpenseError').show();
+                    return;
+                }
+
+                if (miles === undefined || miles === null)
+                    miles = 0;
+
+                var expense = {
+                    when: new Date(when + 'T09:00'),
+                    supplier: supplier,
+                    summary: summary,
+                    amount: parseFloat(amount),
+                    miles: parseFloat(miles)
+                };
+
+                addExpense(expense, function(e) {
+                    expenses();
+                });
+            });
+        }
+
+        function editExpense(id) {
+            getExpenseById(id, function(expenseInstance) {
+                expense = expenseInstance;
+                $('#bookEntries').hide();
+                $('#createExpenseError').hide();
+                $('#customerDetails').hide();
+                $('#findCustomer').hide();
+                $('#expense').show();
+                $('#createBookEntry').hide();
+                $('#customers').hide();
+                $('#expenses').hide();
+                $('#createExpense').hide();
+                $('#updateExpense').show();
+
+                var when = expense.when.toISOString();
+                var date = when.substr(0, when.indexOf('T'));
+
+                $('#expenseWhen').val(date);
+                $('#expenseAmount').val(expense.amount.toFixed(2));
+                $('#expenseSummary').val(expense.summary);
+                $('#expenseSupplier').val(expense.supplier);
+                $('#expenseMiles').val(expense.miles);
+
+                removeValidationStatus('expenseWhen');
+                removeValidationStatus('expenseSupplier');
+                removeValidationStatus('expenseSummary');
+                removeValidationStatus('expenseAmount');
+                removeValidationStatus('expenseMiles');
+
+                $('#expenseWhen').focus();
+            });
+        }
+
+        function updateExpense() {
+            $('#updateExpense').click(function() {
+                var when = $('#expenseWhen').val();
+                var amount = $('#expenseAmount').val();
+                var supplier = $('#expenseSupplier').val();
+                var summary = $('#expenseSummary').val();
+                var miles = $('#expenseMiles').val().trim();
+
+                let milesRegEx = new RegExp(/^[0-9]+(\.[0-9]{1,2}){0,1}$/);
+                let moneyRegEx = new RegExp(/^[0-9]+(\.[0-9]{2}){0,1}$/);
+
+                validate('expenseWhen', hasValue);
+                validate('expenseSupplier', hasValue);
+                validate('expenseSummary', hasValue);
+                validate('expenseAmount', hasValidMoneyValue);
+                validate('expenseMiles', hasValidMilesValue);
+
+                var valid = when.length > 0 && supplier.length > 0 && summary.length > 0 && moneyRegEx.test(amount) && milesRegEx.test(amount);
+
+                if (!valid) {
+                    //$('#createExpenseError').show();
+                    return;
+                }
+
+                if (miles === undefined || miles === null)
+                    miles = 0;
+
+                expense.when = new Date(when + 'T09:00'),
+                expense.supplier = supplier;
+                expense.summary = summary;
+                expense.amount = parseFloat(amount);
+                expense.miles = parseFloat(miles);
+
+                updateExpenseRecord(expense, function() {
+                    expenses();
+                });
+            });
+        }
+
+        function filterResultsByDateFilters(results) {
+
+            var dataFilters = getFromAndToDate();
+            var filteredResults = [];
+
+            results.forEach(function(result) {
+                if (result.when >= dataFilters.fromDate && result.when <= dataFilters.toDate) {
+                    filteredResults.push(result);
+                }
+            });
+
+            return filteredResults;
         }
 
         function getFormattedDate(date) {
@@ -485,7 +828,7 @@
         }
 
         var deleting = false;
-        function deleteBookEntry(index) {
+        function deleteBookEntry(id) {
             if (deleting) return;
 
             var result = confirm('Are you sure?');
@@ -497,7 +840,7 @@
             var bookEntriesTransaction = db.transaction("bookEntry", "readwrite");
             var bookEntriesStore = bookEntriesTransaction.objectStore('bookEntry');
 
-            var request = bookEntriesStore.delete(index);
+            var request = bookEntriesStore.delete(id);
 
             request.onsuccess = function(event) {
                 populateBookEntries();
@@ -505,30 +848,110 @@
             };
         }
 
-        function getAllBookEntries(successCallback) {
+        var deletingExpense = false;
+        function deleteExpense(id) {
+            if (deletingExpense) return;
+
+            var result = confirm('Are you sure?');
+
+            if (!result) return;
+
+            deletingExpense = true;
+            
+            var expensesTransaction = db.transaction("expenses", "readwrite");
+            var expensesStore = expensesTransaction.objectStore('expenses');
+
+            var request = expensesStore.delete(id);
+
+            request.onsuccess = function(event) {
+                expenses();
+                deletingExpense = false;
+            };
+        }
+
+        function getAllBookEntries(successCallback, ignoreDates) {
             var bookEntriesTransaction = db.transaction("bookEntry", "readwrite");
             var bookEntriesStore = bookEntriesTransaction.objectStore('bookEntry');
-            var allRecords = bookEntriesStore.getAll();
+            var index = bookEntriesStore.index('when');
+            var request = index.openCursor(null, ['prev']);
 
-            allRecords.onsuccess = function() {
-                successCallback(allRecords.result);
+            var results = [];
+
+            request.onsuccess = function() {
+                let cursor = request.result;
+                if (cursor) {
+                    results.push(cursor.value);
+                    cursor.continue();
+                } else {
+                    if (ignoreDates) {
+                        successCallback(filterResultsByDateFilters(results));    
+                    } else {
+                        successCallback(results);
+                    }
+                }
+            };
+        }
+
+        function getAllSettings(successCallback) {
+            var settingsTransaction = db.transaction("settings", "readwrite");
+            var settingsStore = settingsTransaction.objectStore('settings');
+            var request = settingsStore.getAll();
+
+            var results = [];
+
+            request.onsuccess = function() {
+                successCallback(request.result);
+            }
+        }
+
+        function getFromAndToDate() {
+            var fromDate = $('#fromDate').val() + 'T00:00:00';
+            var toDate = $('#toDate').val() + 'T23:59:59';
+
+            return {
+                fromDate: new Date(fromDate),
+                toDate: new Date(toDate)
             };
         }
 
         function getAllCustomers(successCallback) {
             var customersTransaction = db.transaction("customer", "readwrite");
             var customersStore = customersTransaction.objectStore('customer');
-            var allRecords = customersStore.getAll();
+            var index = customersStore.index('full');
 
-            allRecords.onsuccess = function() { 
-                var results = allRecords.result.sort(function(a, b){
-                    var aFull = a.full.toLowerCase();
-                    var bFull = b.full.toLowerCase();
-                    if (aFull < bFull) { return -1; }
-                    if (aFull > bFull) { return 1; }
-                    return 0;
-                });
-                successCallback(results);
+            var request = index.openCursor(null, ['next']);
+            var results = [];
+
+            request.onsuccess = function() { 
+                let cursor = request.result;
+                if (cursor) {
+                    results.push(cursor.value);
+                    cursor.continue();
+                } else {
+                    successCallback(results);
+                }
+            };
+        }
+
+        function getAllExpenses(successCallback, ignoreDates) {
+            var expensesTransaction = db.transaction("expenses", "readwrite");
+            var expensesStore = expensesTransaction.objectStore('expenses');
+            var index = expensesStore.index('when');
+            var request = index.openCursor(null, ['prev']);
+            var results = [];
+
+            request.onsuccess = function() { 
+                let cursor = request.result;
+                if (cursor) {
+                    results.push(cursor.value);
+                    cursor.continue();
+                } else {
+                    if (ignoreDates) {
+                        successCallback(filterResultsByDateFilters(results));    
+                    } else {
+                        successCallback(results);
+                    }
+                }
             };
         }
 
@@ -546,6 +969,16 @@
             var customerTransaction = db.transaction("customer", "readwrite");
             var customerStore = customerTransaction.objectStore('customer');
             var record = customerStore.get(id);
+
+            record.onsuccess = function() {
+                successCallback(record.result);
+            };
+        }
+
+        function getExpenseById(id, successCallback) {
+            var expensesTransaction = db.transaction("expenses", "readwrite");
+            var expensesStore = expensesTransaction.objectStore('expenses');
+            var record = expensesStore.get(id);
 
             record.onsuccess = function() {
                 successCallback(record.result);
@@ -573,10 +1006,14 @@
         }
 
         function populateBookEntries(providedBookEntries, removeCollapseButton) {
+            currentView = 'entries';
             $('#bookEntry').hide();
             $('#customerDetails').hide();
             $('#findCustomer').hide();
             $('#customers').hide();
+            $('#tools').hide();
+            $('#expenses').hide();
+            $('#expense').hide();
             $('#bookEntries').show();
 
             $('#bookEntriesSummary').show();
@@ -584,10 +1021,9 @@
             var html = "";
             var total = 0;
             var totalMiles = 0;
+            var totalMilesCost = 0;
 
             function callback(bookEntries) {
-                var bookEntries = orderBookEntries(bookEntries);
-
                 var data = {};
                 var keys = [];
 
@@ -607,6 +1043,7 @@
                 keys.forEach(function(key) {
                     var currentTotal = 0;
                     var currentMiles = 0;
+                    var currentMilesCost = 0;
 
                     data[key].forEach(function(bookEntry) {
                         var miles = bookEntry.miles;
@@ -617,7 +1054,9 @@
                         total += bookEntry.amount;
                         currentTotal += bookEntry.amount;
                         totalMiles += miles;
+                        totalMilesCost += (miles * costPerMile);
                         currentMiles += miles;
+                        currentMilesCost += (miles * costPerMile);
                     });
 
                     var tableId = key.replace(' ', '');
@@ -628,7 +1067,7 @@
                         html += '<div class="form-group"><button id="' + tableId + 'Button"class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample" onclick="toggleTable(\'' + tableId + '\')">' + key + ' ' + buttonAdditionalText + ' ' + (expand ? '-' : '+') + '</button></div>';
                     }
                     
-                    html += '<div id="' + tableId + '"' + (expand ? '' : ' style="display:none"') + ' class="form-group"><label>Amount: £' + currentTotal.toFixed(2) + '</label><br /><label>Miles: ' + currentMiles.toFixed(2) + '</label>';
+                    html += '<div id="' + tableId + '"' + (expand ? '' : ' style="display:none"') + ' class="form-group"><label>Income: £' + currentTotal.toFixed(2) + '</label><br /><label>Miles: ' + currentMiles.toFixed(2) + '</label><br /><label>Miles cost: ' + currentMilesCost.toFixed(2) + '</label>';
                     html += '<table class="table"><thead><tr><th>Date</th><th>Customer</th><th>Amount</th><th>Miles</th><th>Summary of work</th><th>Delete</th></tr></thead><tbody>';
 
                     data[key].forEach(function(bookEntry) {
@@ -643,6 +1082,7 @@
                 $('#bookEntries').show();
                 $('#total').html(total.toFixed(2));
                 $('#totalMiles').html(totalMiles.toFixed(2));
+                $('#totalMilesCost').html(totalMilesCost.toFixed(2));
             }
 
             if (providedBookEntries !== undefined) {
@@ -651,28 +1091,42 @@
                 return;
             }
 
-            getAllBookEntries(callback);   
+            getAllBookEntries(callback);
         }
 
         function download() {
             getAllBookEntries(function(bookEntries) {
                 getAllCustomers(function(customers) {
-                    var data = {
-                        bookEntries: bookEntries,
-                        customers: customers
-                    };
+                    getAllExpenses(function(expenses) {
+                        getAllSettings(function(settings) {
+                            var data = {
+                                bookEntries: bookEntries,
+                                customers: customers,
+                                expenses: expenses
+                            };
 
-                    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
-                    var dlAnchorElem = document.getElementById('downloadAnchorElem');
-                    dlAnchorElem.setAttribute("href", dataStr);
-                    var name = getFormattedDate(new Date());
-                    name = name.replace(' ', '_');
-                    name = name.replace(':', '-');
-                    name = name.replace(/\//g, '-');
-                    dlAnchorElem.setAttribute('download', 'book-entries-' + name + '.json');
-                    dlAnchorElem.click();
+                            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+                            var dlAnchorElem = document.getElementById('downloadAnchorElem');
+                            dlAnchorElem.setAttribute("href", dataStr);
+                            var name = getFormattedDate(new Date());
+                            name = name.replace(' ', '_');
+                            name = name.replace(':', '-');
+                            name = name.replace(/\//g, '-');
+                            dlAnchorElem.setAttribute('download', 'book-entries-' + name + '.json');
+
+                            if (settings.length === 0) {
+                                addSetting({ downloaded: new Date() }, function() {});
+                            } else {
+                                var setting = settings[0];
+                                setting.downloaded = new Date();
+                                updateSettingRecord(setting, function() { });
+                            }
+
+                            dlAnchorElem.click();
+                        });
+                    }, true);
                 })
-            });
+            }, true);
         }
 
         function openFile(event) {
@@ -692,6 +1146,8 @@
                 var numberOfCustomersImported = 0;
                 var numberOfBookEntries = 0;
                 var numberOfBookEntriesImported = 0;
+                var numberOfExpenses = 0;
+                var numberOfExpensesImported = 0;
 
                 state.customers.forEach(function(customer) {
                     addCustomer(customer, function() { numberOfCustomersImported++; });
@@ -708,8 +1164,18 @@
                     numberOfBookEntries++;
                 })
 
+                var expensesTransaction = db.transaction("expenses", "readwrite");
+                var expensesStore = expensesTransaction.objectStore('expenses');
+                expensesStore.clear();
+
+                state.expenses.forEach(function(expense) {
+                    expense.when = new Date(expense.when);
+                    addExpense(expense, function() { numberOfExpensesImported++; });
+                    numberOfExpenses++;
+                })
+
                 var interval = setInterval(() => {
-                    if (numberOfCustomersImported === numberOfCustomers && numberOfBookEntriesImported === numberOfBookEntries) {
+                    if (numberOfCustomersImported === numberOfCustomers && numberOfBookEntriesImported === numberOfBookEntries && numberOfExpensesImported === numberOfExpenses) {
                         clearInterval(interval);
                         populateBookEntries();
                     }
@@ -719,11 +1185,29 @@
             reader.readAsText(input.files[0]);
         };
 
+        function promptForDownload() {
+            getAllSettings(function(settings) {
+                if (settings.length === 0) {
+                    alert('You have never backed up data.  Please back up and email to yourself!');
+                    return;
+                }
+
+                var differenceInTime = Math.abs(new Date() - settings[0].downloaded);
+                var days = Math.ceil(differenceInTime / (1000 * 60 * 60 * 24));
+                
+                if (days >= 30) {
+                    alert('You have not backed up data for over 30 days.  Please back up and email to yourself!');
+                }
+            });
+        }
+
         function initialise() {
-            openRequest = indexedDB.open('BookKeeping', 1);
+            openRequest = indexedDB.open('BookKeeping', 2);
             
-            openRequest.onupgradeneeded = function() {
+            openRequest.onupgradeneeded = function(event) {
                 db = openRequest.result;
+                var transaction = event.target.transaction;
+
                 if (!db.objectStoreNames.contains('customer')) {
                     var store = db.createObjectStore('customer', { keyPath: 'id', autoIncrement: true });
                     store.createIndex('full', ['full'], { unique:false });
@@ -731,17 +1215,45 @@
 
                 if (!db.objectStoreNames.contains('bookEntry'))
                     db.createObjectStore('bookEntry', { keyPath: 'id', autoIncrement: true });
+
+                var bookEntryStore = transaction.objectStore('bookEntry');    
+                
+                if (!bookEntryStore.indexNames.contains('when')) {
+                    bookEntryStore.createIndex('when', ['when'], { unique:false });
+                }
+
+                if (!db.objectStoreNames.contains('expenses')) {
+                    var store = db.createObjectStore('expenses', { keyPath: 'id', autoIncrement: true });
+                    store.createIndex('when', ['when'], { unique:false });
+                }
+
+                if (!db.objectStoreNames.contains('settings')) {
+                    var store = db.createObjectStore('settings', { keyPath: 'id', autoIncrement: true });
+                }
             };
 
             openRequest.onsuccess = function() {
                 db = openRequest.result;
 
+                var toDate = new Date().toISOString();
+                toDate = toDate.substr(0, toDate.indexOf('T'));
+                $('#toDate').val(toDate);
+
+                var fromDate = new Date();
+                fromDate.setFullYear(fromDate.getFullYear() - 2);
+                fromDate = fromDate.toISOString();
+                fromDate = fromDate.substr(0, fromDate.indexOf('T'));
+                $('#fromDate').val(fromDate);
+
                 createCustomer();
                 createBookEntry();
                 updateBookEntry();
                 updateCustomer();
+                createExpense();
+                updateExpense();
                 findCustomer();
                 populateBookEntries();
+                dateFilters();
 
                 $('#downloadButton').click(function() {
                     download();
@@ -766,15 +1278,20 @@
 
                 getAllCustomers(function(customers) {
                     allCustomers = customers;
+                    promptForDownload();
                 });
             };
         }
 
         function customers() {
+            currentView = 'customers';
             $('#bookEntry').hide();
             $('#customerDetails').hide();
             $('#findCustomer').hide();
             $('#bookEntries').hide();
+            $('#tools').hide();
+            $('#expenses').hide();
+            $('#expense').hide();
             $('#customerFilter').val('');
             $('#customers').show();
 
@@ -797,31 +1314,108 @@
             return '<tr><td><a href="javascript:editCustomer(' + customer.id + ')">' + customer.name  + '<a/></td><td>' + customer.addressLine1  + '</td><td>' + customer.town + '</td><td>' + customer.postcode + '</td><td>' + customer.miles + '</td></tr>';
         }
 
+        function expenses() {
+            currentView = 'expenses';
+            $('#bookEntry').hide();
+            $('#customerDetails').hide();
+            $('#findCustomer').hide();
+            $('#bookEntries').hide();
+            $('#tools').hide();
+            $('#expense').hide();
+            $('#customers').hide();
+
+            $('#expenses').show();
+
+            $('#expensesBody').empty();
+
+            var total = 0;
+            var totalMiles = 0;
+            var totalMilesCost = 0;
+
+            getAllExpenses(function(expenses) {
+                var html = '';
+
+                expenses.forEach(function(expense) {
+                    total += expense.amount;
+                    totalMiles += expense.miles;
+                    totalMilesCost += (expense.miles * costPerMile);
+                    html += '<tr><td><a href="javascript:editExpense(' + expense.id + ')">' + getWhen(expense.when) + '<a/></td><td>' + expense.supplier  + '</td><td>' + expense.summary + '</td><td>' + expense.amount.toFixed(2) + '</td><td>' + expense.miles.toFixed(2) + '</td><td><button type="button" class="btn btn-default" onclick="deleteExpense(' + expense.id  + ')">Delete</button></td></tr>';
+                });
+
+                $('#totalExpenses').html(total.toFixed(2));
+                $('#totalExpenseMiles').html(totalMiles.toFixed(2));
+                $('#totalExpenseMilesCost').html(totalMilesCost.toFixed(2));
+
+                $('#expensesBody').append(html);
+            });
+        }
+
         function tools() {
-            $('#tools').toggle();
+            currentView = 'tools';
+            $('#tools').show();
+            $('#bookEntries').hide();
+            $('#bookEntry').hide();
+            $('#findCustomer').hide();
+            $('#createCustomerError').hide();
+            $('#expenses').hide();
+            $('#expense').hide();
+            $('#customers').hide();
+        }
+
+        function collapseDropDownMenu() {
+            $('#dropDownMenu').removeClass('in');
         }
         
     </script>
   </head>
   <body>
       <div class="col-md-12" style="padding-left: 0">
-        <nav class="navbar navbar-expand-lg navbar-light bg-light" style="background-color: #292b2c; border-radius: 0">
-            <a class="navbar-brand" href="#" style="color:white">Book Keeping</a>
-            <a class="navbar-brand navbar-brand-item" href="#" style="color:white" onclick="javascript:populateBookEntries();return false;">Entries</a>
-            <a class="navbar-brand navbar-brand-item" href="#" style="color:white" onclick="javascript:customers();return false;">Customers</a>
-            <a class="navbar-brand navbar-brand-item" href="#" style="color:white" onclick="javascript:tools();return false;">Tools</a>
+        <nav class="navbar navbar-default" style="background-color: #292b2c">
+            <div class="container-fluid">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#dropDownMenu" aria-expanded="false">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="#" onclick="javascript:populateBookEntries();return false;" style="color: white">Book Keeping</a>
+                </div>
+            
+                <div class="collapse navbar-collapse" id="dropDownMenu">
+                    <ul class="nav navbar-nav">
+                        <li><a class="topNavDropDownItem" href="#" onclick="javascript:customers();collapseDropDownMenu();return false;">Customers</a></li>
+                        <li><a class="topNavDropDownItem" href="#" onclick="javascript:expenses();collapseDropDownMenu();return false;">Expenses</a></li>
+                        <li><a class="topNavDropDownItem" href="#" onclick="javascript:tools();collapseDropDownMenu();return false;">Tools</a></li>
+                    </ul>
+                </div>
+            </div>
         </nav>
+
+        <div id="dateFitlering">
+            <div class="panel-body">
+                <div class="form-group">
+                    <label for="customer">Data Filtering</label>
+                    <br />
+                    <div class="col-md-12" style="padding-left: 0; width: 500px">
+                        <div class="col-md-6" style="padding-left: 0;width: 170px;float: left">
+                            <input id="fromDate" type="date" class="form-control" required="">
+                        </div>
+                        <div class="col-md-6" style="padding-left: 0;width: 170px;float: left">
+                            <input id="toDate" type="date" class="form-control" required="">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="tools" class="col-md-12">
             <input type="file" id="import" name="import" class="btn btn-default" accept="application/json" onchange="openFile(event)">
             <button id="downloadButton" type="button" class="btn btn-default btn-primary">Download</button>
             <br /><br />
-        </div>
-        <div class="col-md-12 clear inputMargin marginBottom">
-            <button id="createBookEntryModal" type="button" class="btn btn-default btn-primary">Entry +</button>
-            <button id="createCustomerModal" type="button" class="btn btn-default btn-primary">Customer +</button>
+            <a id="downloadAnchorElem" style="display:none"></a>
         </div>
         
-        <a id="downloadAnchorElem" style="display:none"></a>
         <div id="customerDetails" class="col-md-12 clear">
             <form autocomplete="off">
                 <div class="panel panel-default">
@@ -829,23 +1423,23 @@
                         <h3 class="panel-title">Customer Details</h3>
                     </div>
                     <div class="panel-body">
-                        <div class="form-group">
+                        <div class="form-group" id="nameContainer">
                             <label for="name">Name</label>
                             <input id="name" class="form-control" required="" autofocus="">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="addressLine1Container">
                             <label for="addressLine1">Address Line 1</label>
-                            <input id="addressLine1" class="form-control" required="" onClick="this.select();">
+                            <input id="addressLine1" class="form-control" required="">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="townContainer">
                             <label for="town">Town</label>
-                            <input id="town" class="form-control" required="" onClick="this.select();">
+                            <input id="town" class="form-control" required="">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="postcodeContainer">
                             <label for="postcode">Postcode</label>
                             <input id="postcode" class="form-control" required="" onClick="this.select();">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="milesContainer">
                             <label for="miles">Miles</label>
                             <input id="miles" class="form-control" required="" onClick="this.select();">
                         </div>
@@ -870,11 +1464,11 @@
                             <label for="customerId">Customer Id</label>
                             <input id="customerId" class="form-control" required="" readonly="readonly">
                         </div>
-                        <div class="form-group">
+                        <div id="customerContainer" class="form-group">
                             <label for="customer">Customer</label>
-                            <input id="customer" class="form-control" required="" readonly="readonly">
+                        <input id="customer" class="form-control" required="" readonly="readonly">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="whenContainer">
                             <label for="when">When</label>
                             <input id="when" type="date" class="form-control" required="" onchange="javascript:defaultWhen = $('#when').val();">
                             <select id="whenTime" class="form-control" style="margin-top: 8px;">
@@ -929,13 +1523,13 @@
                                 <option>21:00</option>
                             </select>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="summaryContainer">
                             <label for="summary">Summary of work</label>
-                            <input id="summary" class="form-control" required="" onClick="this.select();">
+                            <input id="summary" class="form-control" required="">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="amountContainer">
                             <label for="amount">Amount (e.g. 12.95)</label>
-                            <input id="amount" class="form-control"required="" onClick="this.select();">
+                            <input id="amount" class="form-control"required="">
                         </div>
                         <div id="createBookEntryError" class="alert alert-danger" role="alert">
                             Populate fields correctly!
@@ -947,9 +1541,46 @@
             </form>
         </div>
 
-        <div id="findCustomer" class="col-md-12 clear">
+        <div id="expense" class="col-md-12 clear">
             <form autocomplete="off">
                 <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Expense</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group" id="expenseWhenContainer">
+                            <label for="expenseWhen">When</label>
+                            <input id="expenseWhen" type="date" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="expenseSupplierContainer">
+                            <label for="expenseSupplier">Supplier</label>
+                            <input id="expenseSupplier" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="expenseSummaryContainer">
+                            <label for="expenseSummary">Summary of supplies</label>
+                            <input id="expenseSummary" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="expenseAmountContainer">
+                            <label for="expenseAmount">Amount (e.g. 12.95)</label>
+                            <input id="expenseAmount" class="form-control"required="">
+                        </div>
+                        <div class="form-group" id="expenseMilesContainer">
+                            <label for="expenseMiles">Miles</label>
+                            <input id="expenseMiles" class="form-control" required="" onClick="this.select();">
+                        </div>
+                        <div id="createExpenseError" class="alert alert-danger" role="alert">
+                            Populate fields correctly!
+                        </div>
+                        <button id="createExpense" type="button" class="btn btn-default btn-primary inputMargin" type="submit">Add Expense</button>
+                        <button id="updateExpense" type="button" class="btn btn-default btn-primary inputMargin" type="submit">Update Expense</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div id="findCustomer" class="col-md-12 clear">
+            <form autocomplete="off">
+                <div class="panel panel-default clear">
                     <div class="panel-heading">
                         <h3 class="panel-title">Find Customer</h3>
                     </div>
@@ -978,17 +1609,25 @@
         </div>
 
         <div id="bookEntries" class="col-md-12 clear">
+            <div class="col-md-12 clear createButtons">
+                <button id="createBookEntryModal" type="button" class="btn btn-default btn-primary">Entry +</button>
+                <button id="createCustomerModal" type="button" class="btn btn-default btn-primary">Customer +</button>
+            </div>
             <div id="bookEntriesSummary">
-                <h4 style="padding-top: 5px">Total Amount: £<span id="total"></span></h4>
+                <h4 style="padding-top: 5px">Total Income: £<span id="total"></span></h4>
                 <h4>Total Miles: <span id="totalMiles"></span></h4>
+                <h4>Total Miles Cost: £<span id="totalMilesCost"></span></h4>
             </div>
             <div id="bookEntriesBody"></div>
         </div>
     </div>
 
     <div id="customers" class="col-md-12 clear">
+        <div class="col-md-12 clear createButtons">
+            <button id="createCustomerModal2" type="button" class="btn btn-default btn-primary">Customer +</button>
+        </div>
         <form autocomplete="off">
-            <div class="panel panel-default">
+            <div class="panel panel-default clear">
                 <div class="panel-heading">
                     <h3 class="panel-title">Customers</h3>
                 </div>
@@ -1013,6 +1652,33 @@
                 </div>
             </div>
         </form>
+    </div>
+
+    <div id="expenses" class="col-md-12 clear">
+        <div id="expensesButtons" class="col-md-12 clear">
+            <button id="createExpenseModal" type="button" class="btn btn-default btn-primary">Expense +</button>
+        </div>
+        <div>
+            <h4 style="padding-top: 5px">Total Expenses: £<span id="totalExpenses"></span></h4>
+            <h4>Total Miles: <span id="totalExpenseMiles"></span></h4>
+            <h4>Total Miles Cost: £<span id="totalExpenseMilesCost"></span></h4>
+        </div>
+        <div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Supplier</th>
+                        <th>Summary</th>
+                        <th>Amount</th>
+                        <th>Miles</th>
+                        <th>Delete</th>
+                    </tr>
+                </thead>
+                <tbody id="expensesBody">
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
