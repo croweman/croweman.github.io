@@ -1227,34 +1227,44 @@
             }, true);
         }
 
+        function updateProgress(progressMade) {
+            $('#progress .progress-bar').html(progressMade + '%');
+            $('#progress .progress-bar').css('width', progressMade + '%');
+            $('#progress .progress-bar').attr('aria-valuenow', progressMade.toString());
+        }
+
         function openFile(event) {
-            var  progressMade = 1;
-            $('#progress .progress-bar').html('1%');
-            $('#progress .progress-bar').css('width', '1%');
-            $('#progress .progress-bar').attr('aria-valuenow', '1');
+            updateProgress(1);
 
             $('#progress').show();
             
             var input = event.target;
 
-            var progressInterval;
             var reader = new FileReader();
             reader.onload = function() {
-
-                progressInterval = setInterval(() => {
-                    progressMade += 1;
-
-                    if (progressMade > 99) {
-                        progressMade = 99;
-                    }
-                    $('#progress .progress-bar').html(progressMade + '%');
-                    $('#progress .progress-bar').css('width', progressMade + '%');
-                    $('#progress .progress-bar').attr('aria-valuenow', progressMade.toString());
-                }, 500);
 
                 $('#bookEntries').hide();
                 var json = reader.result;
                 var state = JSON.parse(json);
+                updateProgress(2);
+
+                var recordsToImport = (state.customers.length + state.bookEntries.length + state.expenses.length) + 2;
+
+                function showProgressToUser() {
+                    var recordsImported = (numberOfCustomersImported + numberOfBookEntriesImported + numberOfExpensesImported) + 2;
+
+                    var progressMade = parseInt(Math.floor((recordsImported / recordsToImport) * 100));
+
+                    if (progressMade < 2) {
+                        progressMade = 2;
+                    }
+
+                    if (progressMade > 99) {
+                        progressMade = 99;
+                    }
+
+                    updateProgress(progressMade);
+                }
 
                 var customersTransaction = db.transaction("customer", "readwrite");
                 var customersStore = customersTransaction.objectStore('customer');
@@ -1268,7 +1278,7 @@
                 var numberOfExpensesImported = 0;
 
                 state.customers.forEach(function(customer) {
-                    addCustomer(customer, function() { numberOfCustomersImported++; });
+                    addCustomer(customer, function() { numberOfCustomersImported++; showProgressToUser(); });
                     numberOfCustomers++;
                 });
 
@@ -1278,7 +1288,7 @@
 
                 state.bookEntries.forEach(function(bookEntry) {
                     bookEntry.when = new Date(bookEntry.when);
-                    addBookEntry(bookEntry, function() { numberOfBookEntriesImported++; });
+                    addBookEntry(bookEntry, function() { numberOfBookEntriesImported++; showProgressToUser(); });
                     numberOfBookEntries++;
                 })
 
@@ -1288,15 +1298,15 @@
 
                 state.expenses.forEach(function(expense) {
                     expense.when = new Date(expense.when);
-                    addExpense(expense, function() { numberOfExpensesImported++; });
+                    addExpense(expense, function() { numberOfExpensesImported++; showProgressToUser(); });
                     numberOfExpenses++;
                 })
 
                 var interval = setInterval(() => {
                     if (numberOfCustomersImported === numberOfCustomers && numberOfBookEntriesImported === numberOfBookEntries && numberOfExpensesImported === numberOfExpenses) {
                         clearInterval(interval);
-                        clearInterval(progressInterval);
                         $('#progress').hide();
+                        $("#importForm").get(0).reset();
                         populateBookEntries();
                     }
                 }, 100);
@@ -1590,10 +1600,12 @@
             <button id="downloadButton" type="button" class="btn btn-default btn-primary">Download data</button>
             <a id="downloadAnchorElem" style="display:none"></a>
             <br /><br />
-            <strong>Import data:</strong> <input type="file" id="import" name="import" class="btn btn-default" accept="application/json" onchange="openFile(event)">
-            <div id="progress" class="progress">
-                <div class="progress-bar" role="progressbar" style="width: 1%;" aria-valuenow="1" aria-valuemin="0" aria-valuemax="100">1%</div>
-              </div>
+            <form id="importForm" name="importForm">
+                <strong>Import data:</strong> <input type="file" id="import" name="import" class="btn btn-default" accept="application/json" onchange="openFile(event)">
+                <div id="progress" class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: 1%;" aria-valuenow="1" aria-valuemin="0" aria-valuemax="100">1%</div>
+                </div>
+            </form>
         </div>
         
         <div id="customerDetails" class="col-md-12 clear">
