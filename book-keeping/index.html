@@ -20,7 +20,7 @@
         .marginBottom {
             margin-bottom: 5px;
         }
-        #customerDetails, #bookEntries, #bookEntry, #createCustomerError, #searchError, #results, #findCustomer, #createBookEntryError, #tools, #expense, #expenses, #customers {
+        #customerDetails, #bookEntries, #bookEntry, #createCustomerError, #searchError, #results, #findCustomer, #createBookEntryError, #tools, #expense, #expenses, #customers, #settings {
             display: none;
         }
 
@@ -98,6 +98,11 @@
             user-select: none;
         }
 
+        #progress {
+            display:none;
+            margin-top:20px;
+        }
+
     </style>
 
     <script type="text/JavaScript">
@@ -114,6 +119,7 @@
         var defaultWhen = getWhen(new Date());
         var costPerMile = 0.45;
         var currentView = 'entries';
+        var setting;
 
         function updateValidationIndicator(id, valid) {
             if (valid) {
@@ -137,6 +143,12 @@
             let milesRegEx = new RegExp(/^[0-9]+(\.[0-9]{1,2}){0,1}$/);
 
             return milesRegEx.test(value);
+        }
+
+        function hasValidInteger(value) {
+            let intRegEx = new RegExp(/^\d+$/);
+
+            return intRegEx.test(value);
         }
 
         function validate(id, validation) {
@@ -812,6 +824,69 @@
             });
         }
 
+        function createSettings() {
+            addValidation('reminderDurationInDays', hasValidInteger);
+            addValidation('numberOfMonthsToShow', hasValidInteger);
+        }
+
+        function editSettings(id) {
+            $('#bookEntries').hide();
+            $('#createExpenseError').hide();
+            $('#customerDetails').hide();
+            $('#findCustomer').hide();
+            $('#expense').hide();
+            $('#createBookEntry').hide();
+            $('#customers').hide();
+            $('#expenses').hide();
+
+            $('#settings').show();
+
+            var durationInDays = 30;
+            var numberOfMonthsToShow = 3;
+
+            if (setting.durationInDays !== undefined && setting.durationInDays !== null) {
+                durationInDays = setting.durationInDays;
+            }
+                
+            if (setting.numberOfMonthsToShow !== undefined && setting.numberOfMonthsToShow !== null) {
+                numberOfMonthsToShow = setting.numberOfMonthsToShow;
+            }
+                
+            $('#reminderDurationInDays').val(durationInDays.toString());
+            $('#numberOfMonthsToShow').val(numberOfMonthsToShow);
+
+            removeValidationStatus('reminderDurationInDays');
+            removeValidationStatus('numberOfMonthsToShow');
+
+            $('#reminderDurationInDays').focus();
+        };
+
+        function updateSettings() {
+            $('#updateSettings').click(function() {
+                var durationInDays = $('#reminderDurationInDays').val().trim();
+                var numberOfMonthsToShow = $('#numberOfMonthsToShow').val().trim();
+
+                var intRegEx = new RegExp(/^\d+$/);
+
+                validate('reminderDurationInDays', hasValidInteger);
+                validate('numberOfMonthsToShow', hasValidInteger);
+
+                var valid = intRegEx.test(durationInDays) && intRegEx.test(numberOfMonthsToShow);
+
+                if (!valid) {
+                    //$('#createExpenseError').show();
+                    return;
+                }
+
+                setting.durationInDays = parseInt(durationInDays);
+                setting.numberOfMonthsToShow = parseInt(numberOfMonthsToShow);
+
+                updateSettingRecord(setting, function() {
+                    populateBookEntries();
+                });
+            });
+        }
+
         function matchesDataFilters(dataFilters, result) {
             return result.when >= dataFilters.fromDate && result.when <= dataFilters.toDate;
         }
@@ -1035,6 +1110,7 @@
             $('#tools').hide();
             $('#expenses').hide();
             $('#expense').hide();
+            $('#settings').hide();
             $('#dateFiltering').show();
             $('#bookEntries').show();
 
@@ -1152,10 +1228,30 @@
         }
 
         function openFile(event) {
+            var  progressMade = 1;
+            $('#progress .progress-bar').html('1%');
+            $('#progress .progress-bar').css('width', '1%');
+            $('#progress .progress-bar').attr('aria-valuenow', '1');
+
+            $('#progress').show();
+            
             var input = event.target;
 
+            var progressInterval;
             var reader = new FileReader();
             reader.onload = function() {
+
+                progressInterval = setInterval(() => {
+                    progressMade += 1;
+
+                    if (progressMade > 99) {
+                        progressMade = 99;
+                    }
+                    $('#progress .progress-bar').html(progressMade + '%');
+                    $('#progress .progress-bar').css('width', progressMade + '%');
+                    $('#progress .progress-bar').attr('aria-valuenow', progressMade.toString());
+                }, 500);
+
                 $('#bookEntries').hide();
                 var json = reader.result;
                 var state = JSON.parse(json);
@@ -1199,6 +1295,8 @@
                 var interval = setInterval(() => {
                     if (numberOfCustomersImported === numberOfCustomers && numberOfBookEntriesImported === numberOfBookEntries && numberOfExpensesImported === numberOfExpenses) {
                         clearInterval(interval);
+                        clearInterval(progressInterval);
+                        $('#progress').hide();
                         populateBookEntries();
                     }
                 }, 100);
@@ -1207,20 +1305,44 @@
             reader.readAsText(input.files[0]);
         };
 
-        function promptForDownload() {
+        function initialiseSettings(callback) {
             getAllSettings(function(settings) {
                 if (settings.length === 0) {
+                    setting = { 
+                        durationInDays: 30,
+                        numberOfMonthsToShow: 3
+                    };
+                    addSetting(setting, callback);
+                } else {
+                    setting = settings[0];
+                    
+                    if (setting.durationInDays === undefined || setting.durationInDays === null) {
+                        setting.durationInDays = 30;
+                    }
+
+                    if (setting.numberOfMonthsToShow === undefined || setting.numberOfMonthsToShow === null) {
+                        setting.numberOfMonthsToShow = 3;
+                    }
+
+                    updateSettingRecord(setting, callback);
+                }
+            });
+        }
+
+        function promptForDownload() {
+            function alertCallback() {
+                if (!setting.downloaded) {
                     alert('You have never backed up data.  Please back up and email to yourself!');
                     return;
                 }
 
-                var differenceInTime = Math.abs(new Date() - settings[0].downloaded);
+                var differenceInTime = Math.abs(new Date() - setting.downloaded);
                 var days = Math.ceil(differenceInTime / (1000 * 60 * 60 * 24));
                 
-                if (days >= 30) {
-                    alert('You have not backed up data for over 30 days.  Please back up and email to yourself!');
+                if (days >= setting.durationInDays) {
+                    alert('You have not backed up data for over ' + setting.durationInDays + ' days.  Please back up and email to yourself!');
                 }
-            });
+            }
         }
 
         function initialise() {
@@ -1257,50 +1379,54 @@
             openRequest.onsuccess = function() {
                 db = openRequest.result;
 
-                var toDate = new Date().toISOString();
-                toDate = toDate.substr(0, toDate.indexOf('T'));
-                $('#toDate').val(toDate);
+                initialiseSettings(function() {
+                    var toDate = new Date().toISOString();
+                    toDate = toDate.substr(0, toDate.indexOf('T'));
+                    $('#toDate').val(toDate);
 
-                var fromDate = new Date();
-                fromDate.setFullYear(fromDate.getFullYear() - 2);
-                fromDate = fromDate.toISOString();
-                fromDate = fromDate.substr(0, fromDate.indexOf('T'));
-                $('#fromDate').val(fromDate);
+                    var today = new moment();
+                    var fromDate = today.add('month', -setting.numberOfMonthsToShow);
+                    fromDate = fromDate.toISOString();
+                    fromDate = fromDate.substr(0, fromDate.indexOf('T'));
+                    $('#fromDate').val(fromDate);
 
-                createCustomer();
-                createBookEntry();
-                updateBookEntry();
-                updateCustomer();
-                createExpense();
-                updateExpense();
-                findCustomer();
-                populateBookEntries();
-                dateFilters();
+                    createCustomer();
+                    createBookEntry();
+                    updateBookEntry();
+                    updateCustomer();
+                    createExpense();
+                    updateExpense();
+                    findCustomer();
+                    createSettings();
+                    updateSettings();
+                    populateBookEntries();
+                    dateFilters();
 
-                $('#downloadButton').click(function() {
-                    download();
-                });
+                    $('#downloadButton').click(function() {
+                        download();
+                    });
 
-                var date = new Date().toISOString();
-                date = date.substr(0, date.indexOf('T'));
-                $('#defaultWhen').val(date);
+                    var date = new Date().toISOString();
+                    date = date.substr(0, date.indexOf('T'));
+                    $('#defaultWhen').val(date);
 
-                timeOptions = document.getElementById('whenTime').options;
+                    timeOptions = document.getElementById('whenTime').options;
 
-                var timeout;
-                $('#filter').on('keyup input', function() {
-                    clearTimeout(timeout);
-                    timeout = setTimeout(findCustomer, 100);
-                });
+                    var timeout;
+                    $('#filter').on('keyup input', function() {
+                        clearTimeout(timeout);
+                        timeout = setTimeout(findCustomer, 100);
+                    });
 
-                $('#customerFilter').on('keyup input', function() {
-                    clearTimeout(timeout);
-                    timeout = setTimeout(findCustomer2, 100);
-                });
+                    $('#customerFilter').on('keyup input', function() {
+                        clearTimeout(timeout);
+                        timeout = setTimeout(findCustomer2, 100);
+                    });
 
-                getAllCustomers(function(customers) {
-                    allCustomers = customers;
-                    promptForDownload();
+                    getAllCustomers(function(customers) {
+                        allCustomers = customers;
+                        promptForDownload();
+                    });
                 });
             };
         }
@@ -1315,6 +1441,7 @@
             $('#expenses').hide();
             $('#dateFiltering').hide();
             $('#expense').hide();
+            $('#settings').hide();
             $('#customerFilter').val('');
             $('#customers').show();
 
@@ -1347,6 +1474,7 @@
             $('#expense').hide();
             $('#dateFiltering').show();
             $('#customers').hide();
+            $('#settings').hide();
 
             $('#expenses').show();
 
@@ -1374,6 +1502,28 @@
             });
         }
 
+        function showSettings() {
+            currentView = 'settings';
+            $('#bookEntry').hide();
+            $('#customerDetails').hide();
+            $('#findCustomer').hide();
+            $('#bookEntries').hide();
+            $('#tools').hide();
+            $('#expense').hide();
+            $('#dateFiltering').hide();
+            $('#customers').hide();
+            $('#expenses').hide();
+            $('#progress').hide();
+
+            $('#settings').show();
+
+            getAllSettings(function(allSettings) {
+                setting = allSettings[0];
+
+                editSettings();
+            });
+        }
+
         function tools() {
             currentView = 'tools';
             $('#tools').show();
@@ -1385,6 +1535,7 @@
             $('#expense').hide();
             $('#customers').hide();
             $('#dateFiltering').hide();
+            $('#settings').hide();
         }
 
         function collapseDropDownMenu() {
@@ -1412,6 +1563,7 @@
                         <li><a class="topNavDropDownItem" href="#" onclick="javascript:customers();collapseDropDownMenu();return false;">Customers</a></li>
                         <li><a class="topNavDropDownItem" href="#" onclick="javascript:expenses();collapseDropDownMenu();return false;">Expenses</a></li>
                         <li><a class="topNavDropDownItem" href="#" onclick="javascript:tools();collapseDropDownMenu();return false;">Tools</a></li>
+                        <li><a class="topNavDropDownItem" href="#" onclick="javascript:showSettings();collapseDropDownMenu();return false;">Settings</a></li>
                     </ul>
                 </div>
             </div>
@@ -1439,6 +1591,9 @@
             <a id="downloadAnchorElem" style="display:none"></a>
             <br /><br />
             <strong>Import data:</strong> <input type="file" id="import" name="import" class="btn btn-default" accept="application/json" onchange="openFile(event)">
+            <div id="progress" class="progress">
+                <div class="progress-bar" role="progressbar" style="width: 1%;" aria-valuenow="1" aria-valuemin="0" aria-valuemax="100">1%</div>
+              </div>
         </div>
         
         <div id="customerDetails" class="col-md-12 clear">
@@ -1603,6 +1758,27 @@
             </form>
         </div>
 
+        <div id="settings" class="col-md-12 clear">
+            <form autocomplete="off">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Settings</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group" id="reminderDurationInDaysContainer">
+                            <label for="reminderDuartionInDays">Download reminder (days)</label>
+                            <input id="reminderDurationInDays" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="numberOfMonthsToShowContainer">
+                            <label for="numberOfMonthsToShow">Number of months to show</label>
+                            <input id="numberOfMonthsToShow" class="form-control" required="">
+                        </div>
+                        <button id="updateSettings" type="button" class="btn btn-default btn-primary inputMargin" type="submit">Update Settings</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
         <div id="findCustomer" class="col-md-12 clear">
             <form autocomplete="off">
                 <div class="panel panel-default clear">
@@ -1711,6 +1887,7 @@
     <script src="jquery-1.12.4.min.js"></script>
     <!-- Include all compiled plugins (below), or include individual files as needed -->
     <script src="bootstrap.min.js"></script>
+    <script src="moment.min.js"></script>
     <script type="text/JavaScript">
     $(function() {
         initialise();
