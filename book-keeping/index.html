@@ -882,7 +882,7 @@
                 setting.numberOfMonthsToShow = parseInt(numberOfMonthsToShow);
 
                 updateSettingRecord(setting, function() {
-                    populateBookEntries();
+                    location.reload();
                 });
             });
         }
