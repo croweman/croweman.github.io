@@ -8,14 +8,8 @@
     <title>Book Keeping</title>
 
     <!-- Bootstrap -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+    <link rel="stylesheet" href="bootstrap.min.css">
 
-    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
-    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
-    <!--[if lt IE 9]>
-      <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
-      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-    <![endif]-->
     <style type="text/css">
         .clear {
             clear: both;
@@ -75,10 +69,37 @@
             padding-left: 0;
         }
 
-        #dateFitlering {
-            margin-top: -15px;
+        #dateFiltering .panel-body {
+            padding-top: 0;
         }
+
+        input[type=file]::-webkit-file-upload-button {
+            color: #fff;
+            background-color: #337ab7;
+            border-color: #2e6da4;
+            display: inline-block;
+            margin-bottom: 0;
+            font-weight: 400;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+            -ms-touch-action: manipulation;
+            touch-action: manipulation;
+            cursor: pointer;
+            background-image: none;
+            border: 1px solid transparent;
+            padding: 6px 12px;
+            font-size: 14px;
+            line-height: 1.42857143;
+            border-radius: 4px;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
     </style>
+
     <script type="text/JavaScript">
         var openRequest;
         var db;
@@ -132,6 +153,10 @@
             $('#' + id).change(function() {
                 validate(id, validation);
             });
+        }
+
+        function scrollToTop() {
+            $('#scrollTo')[0].scrollIntoView();
         }
 
         function addCustomer(customer, successCallback) {
@@ -260,6 +285,7 @@
 
             $('#createCustomerModal').click(createCustomerModalClick);
             $('#createCustomerModal2').click(createCustomerModalClick);
+            $('#createCustomerModal3').click(createCustomerModalClick);
 
             $('#createCustomer').click(function() {
                 $('#createCustomerError').hide();
@@ -295,7 +321,7 @@
                     getAllCustomers(function(custs) {
                         allCustomers = custs;
                         $('#customerDetails').hide();
-                        $('#dateFitlering')[0].scrollIntoView();
+                        scrollToTop();
                         customers();
                     });
                 });
@@ -385,7 +411,7 @@
                             if (numberOfBookEntriesUpdated === numberOfBookEntriesToUpdate) {
                                 clearInterval(interval);
                                 $('#customerDetails').hide();
-                                $('#dateFitlering')[0].scrollIntoView();
+                                scrollToTop();
                                 customers();
                             }
                         }, 100);
@@ -401,7 +427,7 @@
             addValidation('summary', hasValue);
             addValidation('amount', hasValidMoneyValue);
 
-            $('#createBookEntryModal').click(function() {
+            function createBookEntryModalScreen() {
                 $('#createBookEntry').show();
                 $('#updateBookEntry').hide();
                 $('#bookEntries').hide();
@@ -423,7 +449,10 @@
                 $('#amount').val('');
                 $('#summary').val('');
                 $('#when').focus();
-            });
+            }
+
+            $('#createBookEntryModal').click(createBookEntryModalScreen);
+            $('#createBookEntryModal2').click(createBookEntryModalScreen);
 
             $('#customer').click(function() {
                 $('#bookEntry').hide();
@@ -467,7 +496,7 @@
                 addBookEntry(bookEntry, function(e) {
                     bookEntry.id = e.target.result;
                     $('#bookEntry').hide();
-                    $('#dateFitlering')[0].scrollIntoView();
+                    scrollToTop();
                     populateBookEntries([ bookEntry ], true);
                 });
             });
@@ -550,7 +579,7 @@
 
                 updateBookEntryRecord(bookEntry, function() {
                     $('#bookEntry').hide();
-                    $('#dateFitlering')[0].scrollIntoView();
+                    scrollToTop();
                     populateBookEntries([ bookEntry ], true);
                 });
             });
@@ -562,7 +591,7 @@
             $('#resultsBody').empty();
             $('#results').hide();
             $('#filter').focus();
-            $('#dateFitlering')[0].scrollIntoView();
+            scrollToTop();
         }
 
         function findCustomer() {
@@ -783,18 +812,8 @@
             });
         }
 
-        function filterResultsByDateFilters(results) {
-
-            var dataFilters = getFromAndToDate();
-            var filteredResults = [];
-
-            results.forEach(function(result) {
-                if (result.when >= dataFilters.fromDate && result.when <= dataFilters.toDate) {
-                    filteredResults.push(result);
-                }
-            });
-
-            return filteredResults;
+        function matchesDataFilters(dataFilters, result) {
+            return result.when >= dataFilters.fromDate && result.when <= dataFilters.toDate;
         }
 
         function getFormattedDate(date) {
@@ -879,15 +898,16 @@
 
             request.onsuccess = function() {
                 let cursor = request.result;
+                var dataFilters = getFromAndToDate();
+
                 if (cursor) {
-                    results.push(cursor.value);
+                    if (ignoreDates || matchesDataFilters(dataFilters, cursor.value)) {
+                        results.push(cursor.value);
+                    }
+                    
                     cursor.continue();
                 } else {
-                    if (ignoreDates) {
-                        successCallback(results);
-                    } else {
-                        successCallback(filterResultsByDateFilters(results));    
-                    }
+                    successCallback(results);
                 }
             };
         }
@@ -942,15 +962,16 @@
 
             request.onsuccess = function() { 
                 let cursor = request.result;
+                var dataFilters = getFromAndToDate();
+
                 if (cursor) {
-                    results.push(cursor.value);
+                    if (ignoreDates || matchesDataFilters(dataFilters, cursor.value)) {
+                        results.push(cursor.value);
+                    }
+                    
                     cursor.continue();
                 } else {
-                    if (ignoreDates) {
-                        successCallback(results);
-                    } else {
-                        successCallback(filterResultsByDateFilters(results));    
-                    }
+                    successCallback(results);
                 }
             };
         }
@@ -1014,6 +1035,7 @@
             $('#tools').hide();
             $('#expenses').hide();
             $('#expense').hide();
+            $('#dateFiltering').show();
             $('#bookEntries').show();
 
             $('#bookEntriesSummary').show();
@@ -1291,6 +1313,7 @@
             $('#bookEntries').hide();
             $('#tools').hide();
             $('#expenses').hide();
+            $('#dateFiltering').hide();
             $('#expense').hide();
             $('#customerFilter').val('');
             $('#customers').show();
@@ -1322,6 +1345,7 @@
             $('#bookEntries').hide();
             $('#tools').hide();
             $('#expense').hide();
+            $('#dateFiltering').show();
             $('#customers').hide();
 
             $('#expenses').show();
@@ -1360,6 +1384,7 @@
             $('#expenses').hide();
             $('#expense').hide();
             $('#customers').hide();
+            $('#dateFiltering').hide();
         }
 
         function collapseDropDownMenu() {
@@ -1370,7 +1395,7 @@
   </head>
   <body>
       <div class="col-md-12" style="padding-left: 0">
-        <nav class="navbar navbar-default" style="background-color: #292b2c">
+        <nav class="navbar navbar-default" style="background-color: #292b2c;margin-bottom: 12px">
             <div class="container-fluid">
                 <div class="navbar-header">
                     <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#dropDownMenu" aria-expanded="false">
@@ -1391,8 +1416,8 @@
                 </div>
             </div>
         </nav>
-
-        <div id="dateFitlering">
+        <div id="scrollTo"></div>
+        <div id="dateFiltering">
             <div class="panel-body">
                 <div class="form-group">
                     <label for="customer">Data Filtering</label>
@@ -1410,10 +1435,10 @@
         </div>
 
         <div id="tools" class="col-md-12">
-            <input type="file" id="import" name="import" class="btn btn-default" accept="application/json" onchange="openFile(event)">
-            <button id="downloadButton" type="button" class="btn btn-default btn-primary">Download</button>
-            <br /><br />
+            <button id="downloadButton" type="button" class="btn btn-default btn-primary">Download data</button>
             <a id="downloadAnchorElem" style="display:none"></a>
+            <br /><br />
+            <strong>Import data:</strong> <input type="file" id="import" name="import" class="btn btn-default" accept="application/json" onchange="openFile(event)">
         </div>
         
         <div id="customerDetails" class="col-md-12 clear">
@@ -1582,7 +1607,7 @@
             <form autocomplete="off">
                 <div class="panel panel-default clear">
                     <div class="panel-heading">
-                        <h3 class="panel-title">Find Customer</h3>
+                        <h3 class="panel-title">Find Customer <button id="createCustomerModal3" type="button" class="btn btn-default btn-primary">Customer +</button></h3>
                     </div>
                     <div class="panel-body">
                         <div class="form-group">
@@ -1624,6 +1649,7 @@
 
     <div id="customers" class="col-md-12 clear">
         <div class="col-md-12 clear createButtons">
+            <button id="createBookEntryModal2" type="button" class="btn btn-default btn-primary">Entry +</button>
             <button id="createCustomerModal2" type="button" class="btn btn-default btn-primary">Customer +</button>
         </div>
         <form autocomplete="off">
@@ -1682,9 +1708,9 @@
     </div>
 
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
-    <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" crossorigin="anonymous"></script>
+    <script src="jquery-1.12.4.min.js"></script>
     <!-- Include all compiled plugins (below), or include individual files as needed -->
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
+    <script src="bootstrap.min.js"></script>
     <script type="text/JavaScript">
     $(function() {
         initialise();
