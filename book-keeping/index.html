@@ -122,6 +122,7 @@
         var setting;
 
         function updateValidationIndicator(id, valid) {
+            removeValidationStatus(id);
             if (valid) {
                 $('#' + id + 'Container').addClass('has-success');
             } else {
@@ -149,6 +150,14 @@
             let intRegEx = new RegExp(/^\d+$/);
 
             return intRegEx.test(value);
+        }
+
+        function hasValidEmail(value) {
+            let emailRegEx = new RegExp(/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/);
+
+            value = value.trim();
+
+            return value.length === 0 || emailRegEx.test(value);
         }
 
         function validate(id, validation) {
@@ -827,6 +836,8 @@
         function createSettings() {
             addValidation('reminderDurationInDays', hasValidInteger);
             addValidation('numberOfMonthsToShow', hasValidInteger);
+            addValidation('email', hasValidEmail);
+            addValidation('emailcopy', hasValidEmail);
         }
 
         function editSettings(id) {
@@ -843,6 +854,8 @@
 
             var durationInDays = 30;
             var numberOfMonthsToShow = 3;
+            var email = '';
+            var emailcopy = '';
 
             if (setting.durationInDays !== undefined && setting.durationInDays !== null) {
                 durationInDays = setting.durationInDays;
@@ -851,12 +864,24 @@
             if (setting.numberOfMonthsToShow !== undefined && setting.numberOfMonthsToShow !== null) {
                 numberOfMonthsToShow = setting.numberOfMonthsToShow;
             }
+
+            if (setting.email !== undefined && setting.email !== null) {
+                email = setting.email;
+            }
+
+            if (setting.emailcopy !== undefined && setting.emailcopy !== null) {
+                emailcopy = setting.emailcopy;
+            }
                 
             $('#reminderDurationInDays').val(durationInDays.toString());
             $('#numberOfMonthsToShow').val(numberOfMonthsToShow);
+            $('#email').val(email);
+            $('#emailcopy').val(emailcopy);
 
             removeValidationStatus('reminderDurationInDays');
             removeValidationStatus('numberOfMonthsToShow');
+            removeValidationStatus('email');
+            removeValidationStatus('emailcopy');
 
             $('#reminderDurationInDays').focus();
         };
@@ -865,13 +890,20 @@
             $('#updateSettings').click(function() {
                 var durationInDays = $('#reminderDurationInDays').val().trim();
                 var numberOfMonthsToShow = $('#numberOfMonthsToShow').val().trim();
+                var email = $('#email').val().trim();
+                var emailcopy = $('#emailcopy').val().trim();
 
                 var intRegEx = new RegExp(/^\d+$/);
+                var emailRegEx = new RegExp(/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/);
 
                 validate('reminderDurationInDays', hasValidInteger);
                 validate('numberOfMonthsToShow', hasValidInteger);
+                validate('email', hasValidEmail);
+                validate('emailcopy', hasValidEmail);
 
-                var valid = intRegEx.test(durationInDays) && intRegEx.test(numberOfMonthsToShow);
+                var valid = intRegEx.test(durationInDays) && intRegEx.test(numberOfMonthsToShow) && 
+                    (email.length === 0 || emailRegEx.test(email)) &&
+                    (emailcopy.length === 0 || emailRegEx.test(emailcopy));
 
                 if (!valid) {
                     //$('#createExpenseError').show();
@@ -880,6 +912,8 @@
 
                 setting.durationInDays = parseInt(durationInDays);
                 setting.numberOfMonthsToShow = parseInt(numberOfMonthsToShow);
+                setting.email = email;
+                setting.emailcopy = emailcopy;
 
                 updateSettingRecord(setting, function() {
                     location.reload();
@@ -1221,6 +1255,18 @@
                             }
 
                             dlAnchorElem.click();
+
+                            if (setting.email.length > 0) {
+                                setTimeout(function() {
+                                    var url = 'mailto:' + setting.email + '?subject=Book%20Keeping&body=Please%20attach%20the%20exported%20book%20keeping%20data!';
+                                    
+                                    if (setting.emailcopy.length > 0) {
+                                        url += '&cc=' + setting.emailcopy;
+                                    }
+
+                                    window.location.href = url;
+                                }, 2000);
+                            }
                         });
                     }, true);
                 })
@@ -1393,7 +1439,9 @@
                     $('#toDate').val(toDate);
 
                     var today = new moment();
-                    var fromDate = today.add('month', -setting.numberOfMonthsToShow);
+                    var fromDate = today.add('month', -(setting.numberOfMonthsToShow - 1));
+                    fromDate = new Date(fromDate.toISOString());
+                    fromDate.setDate(1);
                     fromDate = fromDate.toISOString();
                     fromDate = fromDate.substr(0, fromDate.indexOf('T'));
                     $('#fromDate').val(fromDate);
@@ -1595,11 +1643,16 @@
         </div>
 
         <div id="tools" class="col-md-12">
-            <button id="downloadButton" type="button" class="btn btn-default btn-primary">Download data</button>
+            <button id="downloadButton" type="button" class="btn btn-default btn-primary">Export data</button>
             <a id="downloadAnchorElem" style="display:none"></a>
+            <a id="mailtoAnchorElem" style="display:none"></a>
             <br /><br />
             <form id="importForm" name="importForm">
-                <strong>Import data:</strong> <input type="file" id="import" name="import" class="btn btn-default" accept="application/json" onchange="openFile(event)">
+                <strong>Import data:</strong>
+                <br />
+                <span>(will overwrite any existing data)</span>
+                <br />
+                <input type="file" id="import" name="import" class="btn btn-default" accept="application/json" onchange="openFile(event)">
                 <div id="progress" class="progress">
                     <div class="progress-bar" role="progressbar" style="width: 1%;" aria-valuenow="1" aria-valuemin="0" aria-valuemax="100">1%</div>
                 </div>
@@ -1782,6 +1835,14 @@
                         <div class="form-group" id="numberOfMonthsToShowContainer">
                             <label for="numberOfMonthsToShow">Number of months to show</label>
                             <input id="numberOfMonthsToShow" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="emailContainer">
+                            <label for="email">Export data email</label>
+                            <input id="email" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="emailcopyContainer">
+                            <label for="emailcopy">Export data email cc</label>
+                            <input id="emailcopy" class="form-control" required="">
                         </div>
                         <button id="updateSettings" type="button" class="btn btn-default btn-primary inputMargin" type="submit">Update Settings</button>
                     </div>
