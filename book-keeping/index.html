@@ -511,7 +511,7 @@
                 $('#updateBookEntry').show();
 
                 $('#customerId').val(bookEntry.customerId);
-                $('#customer').val(bookEntry.customer);
+                $('#customer').val(getFriendlyCustomerInformation(allCustomersDictionary[bookEntry.customerId]));
                 var when = bookEntry.when.toISOString();
                 var date = when.substr(0, when.indexOf('T'));
                 $('#when').val(date);
@@ -599,7 +599,7 @@
             var customers = allCustomers.filter(function(item) {return item.full.indexOf(filter) !== -1; });
 
             customers.forEach(function(customer) {
-                html += '<tr><td><input type="radio" name="customerradio" onclick="javascript:selectChosenCustomer();" value="' + customer.id + '" data-miles="' + customer.miles + '" data-summary="' + customer.name + ', ' + customer.addressLine1 + ', ' + customer.town + '"></td><td>' + customer.name  + '</td><td>' + customer.addressLine1  + '</td><td>' + customer.town + '</td></tr>';
+                html += '<tr><td><input type="radio" name="customerradio" onclick="javascript:selectChosenCustomer();" value="' + customer.id + '" data-miles="' + customer.miles + '" data-summary="' + getFriendlyCustomerInformation(customer) + '"></td><td>' + customer.name  + '</td><td>' + customer.addressLine1  + '</td><td>' + customer.town + '</td></tr>';
             });
 
             $('#results').show();
@@ -1468,11 +1468,15 @@
                 });
             };
         }
+
+        function getFriendlyCustomerInformation(customer) {
+            return customer.name + ', ' + customer.addressLine1 + ', ' + customer.town;
+        }
         
         function buildCustomersDictionary(customers) {
             allCustomersDictionary = {};
             customers.forEach(function(cust) {
-                cust.friendly = cust.name + ', ' + cust.addressLine1 + ', ' + cust.town;
+                cust.friendly = getFriendlyCustomerInformation(cust);
                 allCustomersDictionary[cust.id] = cust;
             });
         }
