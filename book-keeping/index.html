@@ -890,10 +890,6 @@
             });
         }
 
-        function matchesDataFilters(dataFilters, result) {
-            return result.when >= dataFilters.fromDate && result.when <= dataFilters.toDate;
-        }
-
         function getFormattedDate(date) {
             var year = date.getFullYear();
 
@@ -970,28 +966,35 @@
             };
         }
 
-        function getAllBookEntries(successCallback, ignoreDates) {
-            var bookEntriesTransaction = db.transaction("bookEntry", "readwrite");
-            var bookEntriesStore = bookEntriesTransaction.objectStore('bookEntry');
-            var index = bookEntriesStore.index('when');
-            var request = index.openCursor(null, ['prev']);
+        function getDataUsingDateFilters(store, ignoreDates, successCallback) {
+            var index = store.index('when');
+            var request;
+
+            if (ignoreDates) {
+                request = index.openCursor(null, ['prev']);
+            } else {
+                var dataFilters = getFromAndToDate();
+                request = index.openCursor(IDBKeyRange.bound(dataFilters.fromDate, dataFilters.toDate), ['prev']);
+            }
 
             var results = [];
 
             request.onsuccess = function() {
                 let cursor = request.result;
-                var dataFilters = getFromAndToDate();
 
-                if (cursor) {
-                    if (ignoreDates || matchesDataFilters(dataFilters, cursor.value)) {
-                        results.push(cursor.value);
-                    }
-                    
+                if (cursor && cursor.value) {
+                    results.push(cursor.value);
                     cursor.continue();
                 } else {
                     successCallback(results);
                 }
             };
+        }
+
+        function getAllBookEntries(successCallback, ignoreDates) {
+            var bookEntriesTransaction = db.transaction("bookEntry", "readwrite");
+            var bookEntriesStore = bookEntriesTransaction.objectStore('bookEntry');
+            getDataUsingDateFilters(bookEntriesStore, ignoreDates, successCallback);
         }
 
         function getAllSettings(successCallback) {
@@ -1038,24 +1041,7 @@
         function getAllExpenses(successCallback, ignoreDates) {
             var expensesTransaction = db.transaction("expenses", "readwrite");
             var expensesStore = expensesTransaction.objectStore('expenses');
-            var index = expensesStore.index('when');
-            var request = index.openCursor(null, ['prev']);
-            var results = [];
-
-            request.onsuccess = function() { 
-                let cursor = request.result;
-                var dataFilters = getFromAndToDate();
-
-                if (cursor) {
-                    if (ignoreDates || matchesDataFilters(dataFilters, cursor.value)) {
-                        results.push(cursor.value);
-                    }
-                    
-                    cursor.continue();
-                } else {
-                    successCallback(results);
-                }
-            };
+            getDataUsingDateFilters(expensesStore, ignoreDates, successCallback);
         }
 
         function getBookEntryById(id, successCallback) {
@@ -1383,7 +1369,7 @@
         }
 
         function initialise() {
-            openRequest = indexedDB.open('BookKeeping', 2);
+            openRequest = indexedDB.open('BookKeeping', 4);
             
             openRequest.onupgradeneeded = function(event) {
                 db = openRequest.result;
@@ -1399,13 +1385,25 @@
 
                 var bookEntryStore = transaction.objectStore('bookEntry');    
                 
+                if (bookEntryStore.indexNames.contains('when')) {
+                    bookEntryStore.deleteIndex('when');
+                }
+
                 if (!bookEntryStore.indexNames.contains('when')) {
-                    bookEntryStore.createIndex('when', ['when'], { unique:false });
+                    bookEntryStore.createIndex('when', 'when', { unique:false });
+                }
+
+                if (db.objectStoreNames.contains('expenses')) {
+                    var store = transaction.objectStore('expenses');
+                    if (store.indexNames.contains('when')) {
+                        store.deleteIndex('when');
+                    }
+                    store.createIndex('when', 'when', { unique:false });
                 }
 
                 if (!db.objectStoreNames.contains('expenses')) {
                     var store = db.createObjectStore('expenses', { keyPath: 'id', autoIncrement: true });
-                    store.createIndex('when', ['when'], { unique:false });
+                    store.createIndex('when', 'when', { unique:false });
                 }
 
                 if (!db.objectStoreNames.contains('settings')) {
