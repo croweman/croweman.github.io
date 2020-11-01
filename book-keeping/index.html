@@ -113,6 +113,7 @@
         var bookEntry;
         var customer;
         var allCustomers = [];
+        var allCustomersDictionary = {};
         var monthNames = ["January", "February", "March", "April", "May", "June",
             "July", "August", "September", "October", "November", "December"
         ];
@@ -341,6 +342,9 @@
                 addCustomer(customer, function() {
                     getAllCustomers(function(custs) {
                         allCustomers = custs;
+
+                        buildCustomersDictionary(custs);
+
                         $('#customerDetails').hide();
                         scrollToTop();
                         customers();
@@ -410,33 +414,9 @@
 
                 updateCustomerRecord(customer, function() {
 
-                    getAllBookEntries(function(bookEntries) {
-                        var numberOfBookEntriesToUpdate = 0;
-                        var numberOfBookEntriesUpdated = 0;
-
-                        bookEntries.forEach(function(bookEntry) {
-                            if (bookEntry.customerId !== customer.id) return;
-                            
-                            bookEntry.customerId = customer.id;
-                            bookEntry.customer = customer.name + ', ' + customer.addressLine1 + ', ' + customer.town;
-                            bookEntry.miles = customer.miles;
-
-                            numberOfBookEntriesToUpdate++;
-
-                            updateBookEntryRecord(bookEntry, function() {
-                                numberOfBookEntriesUpdated++;
-                            });
-                        });
-                    
-                        var interval = setInterval(() => {
-                            if (numberOfBookEntriesUpdated === numberOfBookEntriesToUpdate) {
-                                clearInterval(interval);
-                                $('#customerDetails').hide();
-                                scrollToTop();
-                                customers();
-                            }
-                        }, 100);
-                    });
+                    $('#customerDetails').hide();
+                    scrollToTop();
+                    customers();
                 });
             });
         }
@@ -502,16 +482,11 @@
                     return;
                 }
 
-                if (miles === undefined || miles === null)
-                    miles = 0;
-
                 var bookEntry = {
-                    customer: customer,
                     customerId: parseInt(customerId),
                     when: new Date(when + 'T' + whenTime),
                     summary: summary,
                     amount: parseFloat(amount),
-                    miles: parseFloat(miles)
                 };
 
                 addBookEntry(bookEntry, function(e) {
@@ -523,8 +498,7 @@
             });
         }
 
-        function editBookEntry(id, milesVal) {
-            miles = milesVal;
+        function editBookEntry(id) {
             getBookEntryById(id, function(bookEntryInstance) {
                 bookEntry = bookEntryInstance;
                 $('#bookEntries').hide();
@@ -588,15 +562,10 @@
                     return;
                 }
 
-                if (miles === undefined || miles === null)
-                    miles = 0;
-
-                bookEntry.customer = customer;
                 bookEntry.customerId = parseInt(customerId);
                 bookEntry.when = new Date(when + 'T' + whenTime);
                 bookEntry.summary = summary;
                 bookEntry.amount = parseFloat(amount);
-                bookEntry.miles = parseFloat(miles);
 
                 updateBookEntryRecord(bookEntry, function() {
                     $('#bookEntry').hide();
@@ -943,7 +912,7 @@
             return day + '/' + month + '/' + year + ' ' + hour + ':' + minute;
         }
 
-        function getWhen(date) {
+        function getWhen(date, englishFormat) {
             var year = date.getFullYear();
 
             var month = (1 + date.getMonth()).toString();
@@ -952,6 +921,10 @@
             var day = date.getDate().toString();
             day = day.length > 1 ? day : '0' + day;
             
+            if (englishFormat) {
+                return day + '/' + month + '/' + year;
+            }
+
             return year + '-' + month + '-' + day;
         }
 
@@ -1178,7 +1151,8 @@
                     var currentMilesCost = 0;
 
                     data[key].forEach(function(bookEntry) {
-                        var miles = bookEntry.miles;
+                        var bookEntryCustomer = allCustomersDictionary[bookEntry.customerId];
+                        var miles = bookEntryCustomer.miles;
 
                         if (miles === undefined || miles === null)
                             miles = 0;
@@ -1203,7 +1177,8 @@
                     html += '<table class="table"><thead><tr><th>Date</th><th>Customer</th><th>Amount</th><th>Miles</th><th>Summary of work</th><th>Delete</th></tr></thead><tbody>';
 
                     data[key].forEach(function(bookEntry) {
-                        html += '<tr><td><a href="javascript:editBookEntry(' + bookEntry.id  + ', ' + bookEntry.miles + ')">' + getFormattedDate(bookEntry.when) + '</a></td><td>' + bookEntry.customer + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + bookEntry.miles.toFixed(2) + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-default" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
+                        var bookEntryCustomer = allCustomersDictionary[bookEntry.customerId];
+                        html += '<tr><td><a href="javascript:editBookEntry(' + bookEntry.id + ')">' + getFormattedDate(bookEntry.when) + '</a></td><td>' + bookEntryCustomer.friendly + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + bookEntryCustomer.miles.toFixed(2) + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-primary" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
                     });
 
                     html += '</tbody></table></div>';
@@ -1237,36 +1212,37 @@
                                 expenses: expenses
                             };
 
-                            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
-                            var dlAnchorElem = document.getElementById('downloadAnchorElem');
-                            dlAnchorElem.setAttribute("href", dataStr);
                             var name = getFormattedDate(new Date());
                             name = name.replace(' ', '_');
                             name = name.replace(':', '-');
                             name = name.replace(/\//g, '-');
-                            dlAnchorElem.setAttribute('download', 'book-entries-' + name + '.json');
+                            var fileName = 'book-entries-' + name + '.json';
+                            var zipFileName = 'book-entries-' + name + '.zip';
 
-                            if (settings.length === 0) {
-                                addSetting({ downloaded: new Date() }, function() {});
-                            } else {
-                                var setting = settings[0];
-                                setting.downloaded = new Date();
-                                updateSettingRecord(setting, function() { });
-                            }
+                            var zip = new JSZip();
+                            zip.file(fileName, JSON.stringify(data));
 
-                            dlAnchorElem.click();
+                            zip.generateAsync({type:"blob", compression: "DEFLATE"})
+                                .then(function(content) {
+                                    // see FileSaver.js
+                                    saveAs(content, zipFileName);
 
-                            if (setting.email.length > 0) {
-                                setTimeout(function() {
-                                    var url = 'mailto:' + setting.email + '?subject=Book%20Keeping&body=Please%20attach%20the%20exported%20book%20keeping%20data!';
-                                    
-                                    if (setting.emailcopy.length > 0) {
-                                        url += '&cc=' + setting.emailcopy;
+                                    var setting = settings[0];
+                                    setting.downloaded = new Date();
+                                    updateSettingRecord(setting, function() { });
+
+                                    if (setting.email.length > 0) {
+                                        setTimeout(function() {
+                                            var url = 'mailto:' + setting.email + '?subject=Book%20Keeping&body=Please%20attach%20the%20exported%20book%20keeping%20data from' + zipFileName;
+                                            
+                                            if (setting.emailcopy.length > 0) {
+                                                url += '&cc=' + setting.emailcopy;
+                                            }
+
+                                            window.location.href = url;
+                                        }, 2000);
                                     }
-
-                                    window.location.href = url;
-                                }, 2000);
-                            }
+                                });
                         });
                     }, true);
                 })
@@ -1288,77 +1264,84 @@
 
             var reader = new FileReader();
             reader.onload = function() {
+                JSZip.loadAsync(reader.result)
+                    .then(function(content) {
+                        var keys = Object.keys(content.files);
+                        return content.files[keys[0]].async('text');
+                    })
+                    .then(function (json) {
+                        $('#bookEntries').hide();
+                        var state = JSON.parse(json);
+                        updateProgress(2);
 
-                $('#bookEntries').hide();
-                var json = reader.result;
-                var state = JSON.parse(json);
-                updateProgress(2);
+                        var recordsToImport = (state.customers.length + state.bookEntries.length + state.expenses.length) + 2;
 
-                var recordsToImport = (state.customers.length + state.bookEntries.length + state.expenses.length) + 2;
+                        function showProgressToUser() {
+                            var recordsImported = (numberOfCustomersImported + numberOfBookEntriesImported + numberOfExpensesImported) + 2;
 
-                function showProgressToUser() {
-                    var recordsImported = (numberOfCustomersImported + numberOfBookEntriesImported + numberOfExpensesImported) + 2;
+                            var progressMade = parseInt(Math.floor((recordsImported / recordsToImport) * 100));
 
-                    var progressMade = parseInt(Math.floor((recordsImported / recordsToImport) * 100));
+                            if (progressMade < 2) {
+                                progressMade = 2;
+                            }
 
-                    if (progressMade < 2) {
-                        progressMade = 2;
-                    }
+                            if (progressMade > 99) {
+                                progressMade = 99;
+                            }
 
-                    if (progressMade > 99) {
-                        progressMade = 99;
-                    }
+                            updateProgress(progressMade);
+                        }
 
-                    updateProgress(progressMade);
-                }
+                        var customersTransaction = db.transaction("customer", "readwrite");
+                        var customersStore = customersTransaction.objectStore('customer');
+                        customersStore.clear();
 
-                var customersTransaction = db.transaction("customer", "readwrite");
-                var customersStore = customersTransaction.objectStore('customer');
-                customersStore.clear();
+                        var numberOfCustomers = 0;
+                        var numberOfCustomersImported = 0;
+                        var numberOfBookEntries = 0;
+                        var numberOfBookEntriesImported = 0;
+                        var numberOfExpenses = 0;
+                        var numberOfExpensesImported = 0;
 
-                var numberOfCustomers = 0;
-                var numberOfCustomersImported = 0;
-                var numberOfBookEntries = 0;
-                var numberOfBookEntriesImported = 0;
-                var numberOfExpenses = 0;
-                var numberOfExpensesImported = 0;
+                        state.customers.forEach(function(customer) {
+                            addCustomer(customer, function() { numberOfCustomersImported++; showProgressToUser(); });
+                            numberOfCustomers++;
+                        });
 
-                state.customers.forEach(function(customer) {
-                    addCustomer(customer, function() { numberOfCustomersImported++; showProgressToUser(); });
-                    numberOfCustomers++;
-                });
+                        var bookyEntryTransaction = db.transaction("bookEntry", "readwrite");
+                        var bookEntryStore = bookyEntryTransaction.objectStore('bookEntry');
+                        bookEntryStore.clear();
 
-                var bookyEntryTransaction = db.transaction("bookEntry", "readwrite");
-                var bookEntryStore = bookyEntryTransaction.objectStore('bookEntry');
-                bookEntryStore.clear();
+                        state.bookEntries.forEach(function(bookEntry) {
+                            bookEntry.when = new Date(bookEntry.when);
+                            delete bookEntry.customer;
+                            delete bookEntry.miles;
+                            addBookEntry(bookEntry, function() { numberOfBookEntriesImported++; showProgressToUser(); });
+                            numberOfBookEntries++;
+                        })
 
-                state.bookEntries.forEach(function(bookEntry) {
-                    bookEntry.when = new Date(bookEntry.when);
-                    addBookEntry(bookEntry, function() { numberOfBookEntriesImported++; showProgressToUser(); });
-                    numberOfBookEntries++;
-                })
+                        var expensesTransaction = db.transaction("expenses", "readwrite");
+                        var expensesStore = expensesTransaction.objectStore('expenses');
+                        expensesStore.clear();
 
-                var expensesTransaction = db.transaction("expenses", "readwrite");
-                var expensesStore = expensesTransaction.objectStore('expenses');
-                expensesStore.clear();
+                        state.expenses.forEach(function(expense) {
+                            expense.when = new Date(expense.when);
+                            addExpense(expense, function() { numberOfExpensesImported++; showProgressToUser(); });
+                            numberOfExpenses++;
+                        })
 
-                state.expenses.forEach(function(expense) {
-                    expense.when = new Date(expense.when);
-                    addExpense(expense, function() { numberOfExpensesImported++; showProgressToUser(); });
-                    numberOfExpenses++;
-                })
-
-                var interval = setInterval(() => {
-                    if (numberOfCustomersImported === numberOfCustomers && numberOfBookEntriesImported === numberOfBookEntries && numberOfExpensesImported === numberOfExpenses) {
-                        clearInterval(interval);
-                        $('#progress').hide();
-                        $("#importForm").get(0).reset();
-                        populateBookEntries();
-                    }
-                }, 100);
+                        var interval = setInterval(() => {
+                            if (numberOfCustomersImported === numberOfCustomers && numberOfBookEntriesImported === numberOfBookEntries && numberOfExpensesImported === numberOfExpenses) {
+                                clearInterval(interval);
+                                $('#progress').hide();
+                                $("#importForm").get(0).reset();
+                                populateBookEntries();
+                            }
+                        }, 100);
+                    });
             };
 
-            reader.readAsText(input.files[0]);
+            reader.readAsArrayBuffer(input.files[0]);
         };
 
         function initialiseSettings(callback) {
@@ -1481,10 +1464,19 @@
 
                     getAllCustomers(function(customers) {
                         allCustomers = customers;
+                        buildCustomersDictionary(customers);
                         promptForDownload();
                     });
                 });
             };
+        }
+        
+        function buildCustomersDictionary(customers) {
+            allCustomersDictionary = {};
+            customers.forEach(function(cust) {
+                cust.friendly = cust.name + ', ' + cust.addressLine1 + ', ' + cust.town;
+                allCustomersDictionary[cust.id] = cust;
+            });
         }
 
         function customers() {
@@ -1505,6 +1497,7 @@
 
             getAllCustomers(function(customers) {
                 allCustomers = customers;
+                buildCustomersDictionary(customers);
 
                 var html = '';
 
@@ -1547,7 +1540,7 @@
                     total += expense.amount;
                     totalMiles += expense.miles;
                     totalMilesCost += (expense.miles * costPerMile);
-                    html += '<tr><td><a href="javascript:editExpense(' + expense.id + ')">' + getWhen(expense.when) + '<a/></td><td>' + expense.supplier  + '</td><td>' + expense.summary + '</td><td>' + expense.amount.toFixed(2) + '</td><td>' + expense.miles.toFixed(2) + '</td><td><button type="button" class="btn btn-default" onclick="deleteExpense(' + expense.id  + ')">Delete</button></td></tr>';
+                    html += '<tr><td><a href="javascript:editExpense(' + expense.id + ')">' + getWhen(expense.when, true) + '<a/></td><td>' + expense.supplier  + '</td><td>' + expense.summary + '</td><td>' + expense.amount.toFixed(2) + '</td><td>' + expense.miles.toFixed(2) + '</td><td><button type="button" class="btn btn-primary" onclick="deleteExpense(' + expense.id  + ')">Delete</button></td></tr>';
                 });
 
                 $('#totalExpenses').html(total.toFixed(2));
@@ -1597,6 +1590,22 @@
         function collapseDropDownMenu() {
             $('#dropDownMenu').removeClass('in');
         }
+
+        function migrateBookEntries() {
+            getAllBookEntries(function(bookEntries) {
+                bookEntries.forEach(function(bookEntry) {
+                    if (bookEntry.customer) {
+                        delete bookEntry.customer;
+                    }
+
+                    if (bookEntry.miles) {
+                        delete bookEntry.miles;
+                    }
+
+                    updateBookEntryRecord(bookEntry, function() {});
+                });
+            }, true);
+        }
         
     </script>
   </head>
@@ -1644,15 +1653,13 @@
 
         <div id="tools" class="col-md-12">
             <button id="downloadButton" type="button" class="btn btn-default btn-primary">Export data</button>
-            <a id="downloadAnchorElem" style="display:none"></a>
-            <a id="mailtoAnchorElem" style="display:none"></a>
             <br /><br />
             <form id="importForm" name="importForm">
                 <strong>Import data:</strong>
                 <br />
                 <span>(will overwrite any existing data)</span>
                 <br />
-                <input type="file" id="import" name="import" class="btn btn-default" accept="application/json" onchange="openFile(event)">
+                <input type="file" id="import" name="import" class="btn btn-default" accept="application/zip" onchange="openFile(event)">
                 <div id="progress" class="progress">
                     <div class="progress-bar" role="progressbar" style="width: 1%;" aria-valuenow="1" aria-valuemin="0" aria-valuemax="100">1%</div>
                 </div>
@@ -1959,6 +1966,8 @@
     <!-- Include all compiled plugins (below), or include individual files as needed -->
     <script src="bootstrap.min.js"></script>
     <script src="moment.min.js"></script>
+    <script src="jszip.min.js"></script>
+    <script src="FileSaver.js"></script>
     <script type="text/JavaScript">
     $(function() {
         initialise();
