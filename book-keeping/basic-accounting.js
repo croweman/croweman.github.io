@@ -1049,11 +1049,11 @@ const download = async () => {
     
     await updateSettingRecord(setting);
 
-    if (setting.email.length > 0) {
+    if (setting.email !== undefined && setting.email !== null && setting.email.length > 0) {
         setTimeout(function() {
             var url = 'mailto:' + setting.email + '?subject=Book%20Keeping&body=Please%20attach%20the%20exported%20book%20keeping%20data from' + zipFileName;
             
-            if (setting.emailcopy.length > 0) {
+            if (setting.emailcopy !== undefined && setting.emailcopy !== null && setting.emailcopy.length > 0) {
                 url += '&cc=' + setting.emailcopy;
             }
 
