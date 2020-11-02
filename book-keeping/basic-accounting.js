@@ -1158,6 +1158,9 @@ const openFile = event => {
                     showProgressToUser();
                 }
 
+                allCustomers = await getAllCustomers();
+                buildCustomersDictionary(allCustomers);
+
                 $('#progress').hide();
                 $("#importForm").get(0).reset();
                 populateBookEntries();
