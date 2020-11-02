@@ -1,0 +1,91 @@
+.clear {
+    clear: both;
+}
+.inputMargin {
+    margin-top:5px;
+}
+.marginBottom {
+    margin-bottom: 5px;
+}
+#customerDetails, #bookEntries, #bookEntry, #createCustomerError, #searchError, #results, #findCustomer, #createBookEntryError, #tools, #expense, #expenses, #customers, #settings {
+    display: none;
+}
+
+#bookEntry {
+    display: none;
+}
+
+input[type=file] {
+    display: inline-block;
+}
+
+body {
+    margin-bottom: 20px;
+}
+
+.has-danger {
+    color: #d9534f;
+}
+
+.has-danger .form-control {
+    border-color: #d9534f;
+}
+
+.has-success {
+    color: #5cb85c;
+}
+
+.has-success .form-control {
+    border-color: #5cb85c;
+}
+
+.navbar-brand-item {
+    font-size: 15px;
+    padding-left: 5px;
+    padding-right: 5px;
+    padding-top: 16px;
+}
+
+.topNavDropDownItem {
+    color: white!important;
+}
+
+.createButtons, #expensesButtons {
+    margin-bottom: 20px;
+    margin-left: 0; 
+    padding-left: 0;
+}
+
+#dateFiltering .panel-body {
+    padding-top: 0;
+}
+
+input[type=file]::-webkit-file-upload-button {
+    color: #fff;
+    background-color: #337ab7;
+    border-color: #2e6da4;
+    display: inline-block;
+    margin-bottom: 0;
+    font-weight: 400;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    -ms-touch-action: manipulation;
+    touch-action: manipulation;
+    cursor: pointer;
+    background-image: none;
+    border: 1px solid transparent;
+    padding: 6px 12px;
+    font-size: 14px;
+    line-height: 1.42857143;
+    border-radius: 4px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+#progress {
+    display:none;
+    margin-top:20px;
+}
