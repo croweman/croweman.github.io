@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>Book Keeping</title>
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="bootstrap.min.css">
+
+    <link rel="stylesheet" href="basic-accounting.css">
+
+    <script src="basic-accounting.js"></script>
+
+  </head>
+  <body>
+      <div class="col-md-12" style="padding-left: 0">
+        <nav class="navbar navbar-default" style="background-color: #292b2c;margin-bottom: 12px">
+            <div class="container-fluid">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#dropDownMenu" aria-expanded="false">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="#" onclick="javascript:populateBookEntries();collapseDropDownMenu();return false;" style="color: white">Book Keeping</a>
+                </div>
+            
+                <div class="collapse navbar-collapse" id="dropDownMenu">
+                    <ul class="nav navbar-nav">
+                        <li><a class="topNavDropDownItem" href="#" onclick="javascript:customers();collapseDropDownMenu();return false;">Customers</a></li>
+                        <li><a class="topNavDropDownItem" href="#" onclick="javascript:expenses();collapseDropDownMenu();return false;">Expenses</a></li>
+                        <li><a class="topNavDropDownItem" href="#" onclick="javascript:tools();collapseDropDownMenu();return false;">Tools</a></li>
+                        <li><a class="topNavDropDownItem" href="#" onclick="javascript:showSettings();collapseDropDownMenu();return false;">Settings</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        <div id="scrollTo"></div>
+        <div id="dateFiltering">
+            <div class="panel-body">
+                <div class="form-group">
+                    <label for="customer">Data Filtering</label>
+                    <br />
+                    <div class="col-md-12" style="padding-left: 0; width: 500px">
+                        <div class="col-md-6" style="padding-left: 0;width: 170px;float: left">
+                            <input id="fromDate" type="date" class="form-control" required="">
+                        </div>
+                        <div class="col-md-6" style="padding-left: 0;width: 170px;float: left">
+                            <input id="toDate" type="date" class="form-control" required="">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tools" class="col-md-12">
+            <button id="downloadButton" type="button" class="btn btn-default btn-primary">Export data</button>
+            <br /><br />
+            <form id="importForm" name="importForm">
+                <strong>Import data:</strong>
+                <br />
+                <span>(will overwrite any existing data)</span>
+                <br />
+                <input type="file" id="import" name="import" class="btn btn-default" accept="application/zip" onchange="openFile(event)">
+                <div id="progress" class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: 1%;" aria-valuenow="1" aria-valuemin="0" aria-valuemax="100">1%</div>
+                </div>
+            </form>
+        </div>
+        
+        <div id="customerDetails" class="col-md-12 clear">
+            <form autocomplete="off">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Customer Details</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group" id="nameContainer">
+                            <label for="name">Name</label>
+                            <input id="name" class="form-control" required="" autofocus="">
+                        </div>
+                        <div class="form-group" id="addressLine1Container">
+                            <label for="addressLine1">Address Line 1</label>
+                            <input id="addressLine1" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="townContainer">
+                            <label for="town">Town</label>
+                            <input id="town" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="postcodeContainer">
+                            <label for="postcode">Postcode</label>
+                            <input id="postcode" class="form-control" required="" onClick="this.select();">
+                        </div>
+                        <div class="form-group" id="milesContainer">
+                            <label for="miles">Miles</label>
+                            <input id="miles" class="form-control" required="" onClick="this.select();">
+                        </div>
+                        <div id="createCustomerError" class="alert alert-danger" role="alert">
+                            Populate fields correctly!
+                        </div>
+                        <button id="createCustomer" type="button" class="btn btn-default btn-primary inputMargin" type="submit">Add Customer</button>
+                        <button id="updateCustomer" type="button" class="btn btn-default btn-primary inputMargin" type="submit">Update Customer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div id="bookEntry" class="col-md-12 clear">
+            <form autocomplete="off">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Book entry</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group" style="display: none">
+                            <label for="customerId">Customer Id</label>
+                            <input id="customerId" class="form-control" required="" readonly="readonly">
+                        </div>
+                        <div id="customerContainer" class="form-group">
+                            <label for="customer">Customer</label>
+                        <input id="customer" class="form-control" required="" readonly="readonly">
+                        </div>
+                        <div class="form-group" id="whenContainer">
+                            <label for="when">When</label>
+                            <input id="when" type="date" class="form-control" required="" onchange="javascript:defaultWhen = $('#when').val();">
+                            <select id="whenTime" class="form-control" style="margin-top: 8px;">
+                                <option>09:00</option>
+                                <option>09:15</option>
+                                <option>09:30</option>
+                                <option>09:45</option>
+                                <option>10:00</option>
+                                <option>10:15</option>
+                                <option>10:30</option>
+                                <option>10:45</option>
+                                <option>11:00</option>
+                                <option>11:15</option>
+                                <option>11:30</option>
+                                <option>11:45</option>
+                                <option>12:00</option>
+                                <option>12:15</option>
+                                <option>12:30</option>
+                                <option>12:45</option>
+                                <option>13:00</option>
+                                <option>13:15</option>
+                                <option>13:30</option>
+                                <option>13:45</option>
+                                <option>14:00</option>
+                                <option>14:15</option>
+                                <option>14:30</option>
+                                <option>14:45</option>
+                                <option>15:00</option>
+                                <option>15:15</option>
+                                <option>15:30</option>
+                                <option>15:45</option>
+                                <option>16:00</option>
+                                <option>16:15</option>
+                                <option>16:30</option>
+                                <option>16:45</option>
+                                <option>17:00</option>
+                                <option>17:15</option>
+                                <option>17:30</option>
+                                <option>17:45</option>
+                                <option>18:00</option>
+                                <option>18:15</option>
+                                <option>18:30</option>
+                                <option>18:45</option>
+                                <option>19:00</option>
+                                <option>19:15</option>
+                                <option>19:30</option>
+                                <option>19:45</option>
+                                <option>20:00</option>
+                                <option>20:15</option>
+                                <option>20:30</option>
+                                <option>20:45</option>
+                                <option>21:00</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="summaryContainer">
+                            <label for="summary">Summary of work</label>
+                            <input id="summary" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="amountContainer">
+                            <label for="amount">Amount (e.g. 12.95)</label>
+                            <input id="amount" class="form-control"required="">
+                        </div>
+                        <div id="createBookEntryError" class="alert alert-danger" role="alert">
+                            Populate fields correctly!
+                        </div>
+                        <button id="createBookEntry" type="button" class="btn btn-default btn-primary inputMargin" type="submit">Add Book Entry</button>
+                        <button id="updateBookEntry" type="button" class="btn btn-default btn-primary inputMargin" type="submit">Update Book Entry</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div id="expense" class="col-md-12 clear">
+            <form autocomplete="off">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Expense</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group" id="expenseWhenContainer">
+                            <label for="expenseWhen">When</label>
+                            <input id="expenseWhen" type="date" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="expenseSupplierContainer">
+                            <label for="expenseSupplier">Supplier</label>
+                            <input id="expenseSupplier" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="expenseSummaryContainer">
+                            <label for="expenseSummary">Summary of supplies</label>
+                            <input id="expenseSummary" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="expenseAmountContainer">
+                            <label for="expenseAmount">Amount (e.g. 12.95)</label>
+                            <input id="expenseAmount" class="form-control"required="">
+                        </div>
+                        <div class="form-group" id="expenseMilesContainer">
+                            <label for="expenseMiles">Miles</label>
+                            <input id="expenseMiles" class="form-control" required="" onClick="this.select();">
+                        </div>
+                        <div id="createExpenseError" class="alert alert-danger" role="alert">
+                            Populate fields correctly!
+                        </div>
+                        <button id="createExpense" type="button" class="btn btn-default btn-primary inputMargin" type="submit">Add Expense</button>
+                        <button id="updateExpense" type="button" class="btn btn-default btn-primary inputMargin" type="submit">Update Expense</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div id="settings" class="col-md-12 clear">
+            <form autocomplete="off">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Settings</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group" id="reminderDurationInDaysContainer">
+                            <label for="reminderDuartionInDays">Download reminder (days)</label>
+                            <input id="reminderDurationInDays" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="numberOfMonthsToShowContainer">
+                            <label for="numberOfMonthsToShow">Number of months to show</label>
+                            <input id="numberOfMonthsToShow" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="costPerMileContainer">
+                            <label for="costPerMile">Cost per mile</label>
+                            <input id="costPerMile" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="emailContainer">
+                            <label for="email">Export data email</label>
+                            <input id="email" class="form-control" required="">
+                        </div>
+                        <div class="form-group" id="emailcopyContainer">
+                            <label for="emailcopy">Export data email cc</label>
+                            <input id="emailcopy" class="form-control" required="">
+                        </div>
+                        <button id="updateSettings" type="button" class="btn btn-default btn-primary inputMargin" type="submit">Update Settings</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div id="findCustomer" class="col-md-12 clear">
+            <form autocomplete="off">
+                <div class="panel panel-default clear">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Find Customer <button id="createCustomerModal3" type="button" class="btn btn-default btn-primary">Customer +</button></h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label for="filter" class="sr-only">Search filter</label>
+                            <input id="filter" class="form-control" required="" autofocus="">
+                        </div>
+                        <div id="results">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Select</th>
+                                        <th>Name</th>
+                                        <th>Address line 1</th>
+                                        <th>Town</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resultsBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div id="bookEntries" class="col-md-12 clear">
+            <div class="col-md-12 clear createButtons">
+                <button id="createBookEntryModal" type="button" class="btn btn-default btn-primary">Entry +</button>
+                <button id="createCustomerModal" type="button" class="btn btn-default btn-primary">Customer +</button>
+            </div>
+            <div id="bookEntriesSummary">
+                <h4 style="padding-top: 5px">Total Income: £<span id="total"></span></h4>
+                <h4>Total Miles: <span id="totalMiles"></span></h4>
+                <h4>Total Miles Cost: £<span id="totalMilesCost"></span></h4>
+            </div>
+            <div id="bookEntriesBody"></div>
+        </div>
+    </div>
+
+    <div id="customers" class="col-md-12 clear">
+        <div class="col-md-12 clear createButtons">
+            <button id="createBookEntryModal2" type="button" class="btn btn-default btn-primary">Entry +</button>
+            <button id="createCustomerModal2" type="button" class="btn btn-default btn-primary">Customer +</button>
+        </div>
+        <form autocomplete="off">
+            <div class="panel panel-default clear">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Customers</h3>
+                </div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <label for="customerFilter">Search filter</label>
+                        <input id="customerFilter" class="form-control" required="" autofocus="">
+                    </div>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Address line 1</th>
+                                <th>Town</th>
+                                <th>Postcode</th>
+                                <th>Miles</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customersBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div id="expenses" class="col-md-12 clear">
+        <div id="expensesButtons" class="col-md-12 clear">
+            <button id="createExpenseModal" type="button" class="btn btn-default btn-primary">Expense +</button>
+        </div>
+        <div>
+            <h4 style="padding-top: 5px">Total Expenses: £<span id="totalExpenses"></span></h4>
+            <h4>Total Miles: <span id="totalExpenseMiles"></span></h4>
+            <h4>Total Miles Cost: £<span id="totalExpenseMilesCost"></span></h4>
+        </div>
+        <div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Supplier</th>
+                        <th>Summary</th>
+                        <th>Amount</th>
+                        <th>Miles</th>
+                        <th>Delete</th>
+                    </tr>
+                </thead>
+                <tbody id="expensesBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="jquery-1.12.4.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="bootstrap.min.js"></script>
+    <script src="moment.min.js"></script>
+    <script src="jszip.min.js"></script>
+    <script src="FileSaver.js"></script>
+    <script type="text/JavaScript">
+    $(function() {
+        initialise();
+    });
+    </script>
+  </body>
+</html>

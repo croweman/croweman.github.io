@@ -14,6 +14,7 @@ const getWhen = (date, englishFormat) => {
     return year + '-' + month + '-' + day;
 };
 
+const defaultCostPerMile = 0.45;
 const moneyRegEx = new RegExp(/^[0-9]+(\.[0-9]{2}){0,1}$/);
 const milesRegEx = new RegExp(/^[0-9]+(\.[0-9]{1,2}){0,1}$/);
 const emailRegEx = new RegExp(/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/);
@@ -28,7 +29,6 @@ var allCustomers = [];
 var allCustomersDictionary = {};
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 var defaultWhen = getWhen(new Date());
-var costPerMile = 0.45;
 var currentView = 'entries';
 var setting;
 var deletingExpense = false;
@@ -685,6 +685,7 @@ const updateExpense = () => {
 const createSettings = () => {
     addValidation('reminderDurationInDays', hasValidInteger);
     addValidation('numberOfMonthsToShow', hasValidInteger);
+    addValidation('costPerMile', hasValidMoneyValue);
     addValidation('email', hasValidEmail);
     addValidation('emailcopy', hasValidEmail);
 };
@@ -703,6 +704,7 @@ const editSettings = id => {
 
     var durationInDays = 30;
     var numberOfMonthsToShow = 3;
+    var costPerMile = defaultCostPerMile;
     var email = '';
     var emailcopy = '';
 
@@ -712,6 +714,10 @@ const editSettings = id => {
         
     if (setting.numberOfMonthsToShow !== undefined && setting.numberOfMonthsToShow !== null) {
         numberOfMonthsToShow = setting.numberOfMonthsToShow;
+    }
+
+    if (setting.costPerMile !== undefined && setting.costPerMile !== null) {
+        costPerMile = setting.costPerMile;
     }
 
     if (setting.email !== undefined && setting.email !== null) {
@@ -724,11 +730,13 @@ const editSettings = id => {
         
     $('#reminderDurationInDays').val(durationInDays.toString());
     $('#numberOfMonthsToShow').val(numberOfMonthsToShow);
+    $('#costPerMile').val(costPerMile);
     $('#email').val(email);
     $('#emailcopy').val(emailcopy);
 
     removeValidationStatus('reminderDurationInDays');
     removeValidationStatus('numberOfMonthsToShow');
+    removeValidationStatus('costPerMile');
     removeValidationStatus('email');
     removeValidationStatus('emailcopy');
 
@@ -739,15 +747,19 @@ const updateSettings = () => {
     $('#updateSettings').click(async () => {
         var durationInDays = $('#reminderDurationInDays').val().trim();
         var numberOfMonthsToShow = $('#numberOfMonthsToShow').val().trim();
+        var costPerMile = $('#costPerMile').val().trim();
         var email = $('#email').val().trim();
         var emailcopy = $('#emailcopy').val().trim();
 
         validate('reminderDurationInDays', hasValidInteger);
         validate('numberOfMonthsToShow', hasValidInteger);
+        validate('costPerMile', hasValidMoneyValue);
         validate('email', hasValidEmail);
         validate('emailcopy', hasValidEmail);
 
-        var valid = intRegEx.test(durationInDays) && intRegEx.test(numberOfMonthsToShow) && 
+        var valid = intRegEx.test(durationInDays) && 
+            intRegEx.test(numberOfMonthsToShow) && 
+            moneyRegEx.test(costPerMile) && 
             (email.length === 0 || emailRegEx.test(email)) &&
             (emailcopy.length === 0 || emailRegEx.test(emailcopy));
 
@@ -755,6 +767,7 @@ const updateSettings = () => {
 
         setting.durationInDays = parseInt(durationInDays);
         setting.numberOfMonthsToShow = parseInt(numberOfMonthsToShow);
+        setting.costPerMile = parseFloat(costPerMile);
         setting.email = email;
         setting.emailcopy = emailcopy;
 
@@ -973,9 +986,9 @@ const populateBookEntries = async (providedBookEntries, removeCollapseButton) =>
                 total += bookEntry.amount;
                 currentTotal += bookEntry.amount;
                 totalMiles += miles;
-                totalMilesCost += (miles * costPerMile);
+                totalMilesCost += (miles * setting.costPerMile);
                 currentMiles += miles;
-                currentMilesCost += (miles * costPerMile);
+                currentMilesCost += (miles * setting.costPerMile);
             });
 
             var tableId = key.replace(' ', '');
@@ -1160,7 +1173,8 @@ const initialiseSettings = async () => {
     if (settings.length === 0) {
         setting = { 
             durationInDays: 30,
-            numberOfMonthsToShow: 3
+            numberOfMonthsToShow: 3,
+            costPerMile: defaultCostPerMile
         };
         await addSetting(setting);
     } else {
@@ -1172,6 +1186,10 @@ const initialiseSettings = async () => {
 
         if (setting.numberOfMonthsToShow === undefined || setting.numberOfMonthsToShow === null) {
             setting.numberOfMonthsToShow = 3;
+        }
+
+        if (setting.costPerMile === undefined || setting.costPerMile === null) {
+            setting.costPerMile = defaultCostPerMile;
         }
 
         await updateSettingRecord(setting);
@@ -1357,7 +1375,7 @@ const expenses = async () => {
     expenses.forEach(function(expense) {
         total += expense.amount;
         totalMiles += expense.miles;
-        totalMilesCost += (expense.miles * costPerMile);
+        totalMilesCost += (expense.miles * setting.costPerMile);
         html += '<tr><td><a href="javascript:editExpense(' + expense.id + ')">' + getWhen(expense.when, true) + '<a/></td><td>' + expense.supplier  + '</td><td>' + expense.summary + '</td><td>' + expense.amount.toFixed(2) + '</td><td>' + expense.miles.toFixed(2) + '</td><td><button type="button" class="btn btn-primary" onclick="deleteExpense(' + expense.id  + ')">Delete</button></td></tr>';
     });
 
