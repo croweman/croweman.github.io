@@ -699,6 +699,7 @@ const editSettings = id => {
     $('#createBookEntry').hide();
     $('#customers').hide();
     $('#expenses').hide();
+    $('#findBookEntries').hide();
 
     $('#settings').show();
 
@@ -930,7 +931,85 @@ const toggleTable = tableId => {
     $('#' + tableId + 'Button').text(buttonText);
 }
 
+const processBookEntries = (bookEntries, removeCollapseButton) => {
+    var html = "";
+    var total = 0;
+    var totalMiles = 0;
+    var totalMilesCost = 0;
+    var data = {};
+    var keys = [];
+
+    if (bookEntries.length > 0) {
+        $('#bookEntriesSummary').show();
+    }
+
+    bookEntries.forEach(bookEntry => {
+        var key = getDateLabel(bookEntry.when);
+        
+        if (!data[key]) {
+            data[key] = [];
+            keys.push(key);
+        }
+
+        data[key].push(bookEntry);
+    });
+
+    var expand = true;
+
+    keys.forEach(key => {
+        var currentTotal = 0;
+        var currentMiles = 0;
+        var currentMilesCost = 0;
+
+        data[key].forEach(bookEntry => {
+            var bookEntryCustomer = allCustomersDictionary[bookEntry.customerId];
+            var miles = bookEntryCustomer.miles;
+
+            if (miles === undefined || miles === null)
+                miles = 0;
+
+            total += bookEntry.amount;
+            currentTotal += bookEntry.amount;
+            totalMiles += miles;
+            totalMilesCost += (miles * setting.costPerMile);
+            currentMiles += miles;
+            currentMilesCost += (miles * setting.costPerMile);
+        });
+
+        var tableId = key.replace(' ', '');
+        var entries = data[key].length;
+        var buttonAdditionalText = '&nbsp;&nbsp;(' + entries + ' ' + (entries === 1 ? 'entry' : 'entries') + ')';
+
+        if (!removeCollapseButton) {
+            html += '<div class="form-group"><button id="' + tableId + 'Button"class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample" onclick="toggleTable(\'' + tableId + '\')">' + key + ' ' + buttonAdditionalText + ' ' + (expand ? '-' : '+') + '</button></div>';
+            html += '<div id="' + tableId + '"' + (expand ? '' : ' style="display:none"') + ' class="form-group"><label>Income: £' + currentTotal.toFixed(2) + '</label><br /><label>Miles: ' + currentMiles.toFixed(2) + '</label><br /><label>Miles cost: ' + currentMilesCost.toFixed(2) + '</label>';
+        } else {
+            $('#bookEntriesSummary').hide();
+        }
+        
+        html += '<table class="table"><thead><tr><th>Date</th><th>Customer</th><th>Amount</th><th>Miles</th><th>Summary of work</th><th>Delete</th></tr></thead><tbody>';
+
+        data[key].forEach(bookEntry => {
+            var bookEntryCustomer = allCustomersDictionary[bookEntry.customerId];
+            html += '<tr><td><a href="javascript:editBookEntry(' + bookEntry.id + ')">' + getFormattedDate(bookEntry.when) + '</a></td><td>' + bookEntryCustomer.friendly + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + bookEntryCustomer.miles.toFixed(2) + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-primary" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
+        });
+
+        html += '</tbody></table></div>';
+        expand = false;
+    });
+
+    $('#bookEntriesBody').html(html)
+    $('#bookEntries').show();
+    $('#total').html(total.toFixed(2));
+    $('#totalMiles').html(totalMiles.toFixed(2));
+    $('#totalMilesCost').html(totalMilesCost.toFixed(2));
+};
+
 const populateBookEntries = async (providedBookEntries, removeCollapseButton) => {
+
+    $('#findBookEntries').hide();
+    $('#bookEntryFilter').val('');
+
     currentView = 'entries';
     $('#bookEntry').hide();
     $('#customerDetails').hide();
@@ -945,89 +1024,14 @@ const populateBookEntries = async (providedBookEntries, removeCollapseButton) =>
 
     $('#bookEntriesSummary').hide();
 
-    var html = "";
-    var total = 0;
-    var totalMiles = 0;
-    var totalMilesCost = 0;
-
-    const processBookEntries = bookEntries => {
-        var data = {};
-        var keys = [];
-
-        if (bookEntries.length > 0) {
-            $('#bookEntriesSummary').show();
-        }
-
-        bookEntries.forEach(function(bookEntry) {
-            var key = getDateLabel(bookEntry.when);
-            
-            if (!data[key]) {
-                data[key] = [];
-                keys.push(key);
-            }
-
-            data[key].push(bookEntry);
-        });
-
-        var expand = true;
-
-        keys.forEach(function(key) {
-            var currentTotal = 0;
-            var currentMiles = 0;
-            var currentMilesCost = 0;
-
-            data[key].forEach(function(bookEntry) {
-                var bookEntryCustomer = allCustomersDictionary[bookEntry.customerId];
-                var miles = bookEntryCustomer.miles;
-
-                if (miles === undefined || miles === null)
-                    miles = 0;
-
-                total += bookEntry.amount;
-                currentTotal += bookEntry.amount;
-                totalMiles += miles;
-                totalMilesCost += (miles * setting.costPerMile);
-                currentMiles += miles;
-                currentMilesCost += (miles * setting.costPerMile);
-            });
-
-            var tableId = key.replace(' ', '');
-            var entries = data[key].length;
-            var buttonAdditionalText = '&nbsp;&nbsp;(' + entries + ' ' + (entries === 1 ? 'entry' : 'entries') + ')';
-
-            if (!removeCollapseButton) {
-                html += '<div class="form-group"><button id="' + tableId + 'Button"class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample" onclick="toggleTable(\'' + tableId + '\')">' + key + ' ' + buttonAdditionalText + ' ' + (expand ? '-' : '+') + '</button></div>';
-                html += '<div id="' + tableId + '"' + (expand ? '' : ' style="display:none"') + ' class="form-group"><label>Income: £' + currentTotal.toFixed(2) + '</label><br /><label>Miles: ' + currentMiles.toFixed(2) + '</label><br /><label>Miles cost: ' + currentMilesCost.toFixed(2) + '</label>';
-            } else {
-                $('#bookEntriesSummary').hide();
-            }
-            
-            html += '<table class="table"><thead><tr><th>Date</th><th>Customer</th><th>Amount</th><th>Miles</th><th>Summary of work</th><th>Delete</th></tr></thead><tbody>';
-
-            data[key].forEach(function(bookEntry) {
-                var bookEntryCustomer = allCustomersDictionary[bookEntry.customerId];
-                html += '<tr><td><a href="javascript:editBookEntry(' + bookEntry.id + ')">' + getFormattedDate(bookEntry.when) + '</a></td><td>' + bookEntryCustomer.friendly + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + bookEntryCustomer.miles.toFixed(2) + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-primary" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
-            });
-
-            html += '</tbody></table></div>';
-            expand = false;
-        });
-
-        $('#bookEntriesBody').html(html)
-        $('#bookEntries').show();
-        $('#total').html(total.toFixed(2));
-        $('#totalMiles').html(totalMiles.toFixed(2));
-        $('#totalMilesCost').html(totalMilesCost.toFixed(2));
-    }
-
     if (providedBookEntries !== undefined) {
         $('#bookEntriesSummary').hide();
-        processBookEntries(providedBookEntries);
+        processBookEntries(providedBookEntries, removeCollapseButton);
         return;
     }
 
     let allBookEntries = await getAllBookEntries();
-    processBookEntries(allBookEntries);
+    processBookEntries(allBookEntries, removeCollapseButton);
 }
 
 const download = async () => {
@@ -1213,6 +1217,39 @@ const promptForDownload = () => {
     }
 }
 
+const findBookEntries = async () => {
+    let allBookEntries = await getAllBookEntries();
+
+    let val = $('#bookEntryFilter').val().trim().toLowerCase();
+
+    let filteredBookEntries = allBookEntries;
+
+    if (val.length > 0) {
+        filteredBookEntries = allBookEntries.filter((entry) => allCustomersDictionary[entry.customerId].full.indexOf(val) !== -1);    
+    }
+
+    processBookEntries(filteredBookEntries, false);
+};
+
+const searchBookEntries = () => {
+    $('#searchBookEntries').click(() => {
+        $('#findBookEntries').toggle();
+        $('#bookEntryFilter').val('');
+        findBookEntries();
+
+        if ($('#findBookEntries').is(':visible')) {
+            $('#bookEntryFilter').focus();
+        }
+    });
+
+    var timeout;
+    $('#bookEntryFilter').on('keyup input', function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(findBookEntries, 100);
+    });
+
+};
+
 const initialise = () => {
     openRequest = indexedDB.open('BookKeeping', 4);
     
@@ -1283,6 +1320,7 @@ const initialise = () => {
         createSettings();
         updateSettings();
         dateFilters();
+        searchBookEntries();
 
         $('#downloadButton').click(function() {
             download();
@@ -1333,6 +1371,7 @@ const customers = async () => {
     $('#dateFiltering').hide();
     $('#expense').hide();
     $('#settings').hide();
+    $('#findBookEntries').hide();
     $('#customerFilter').val('');
     $('#customers').show();
 
@@ -1363,6 +1402,7 @@ const expenses = async () => {
     $('#dateFiltering').show();
     $('#customers').hide();
     $('#settings').hide();
+    $('#findBookEntries').hide();
 
     $('#expenses').show();
 
@@ -1401,6 +1441,7 @@ const showSettings = async () => {
     $('#customers').hide();
     $('#expenses').hide();
     $('#progress').hide();
+    $('#findBookEntries').hide();
 
     $('#settings').show();
 
@@ -1422,6 +1463,7 @@ const tools = () => {
     $('#customers').hide();
     $('#dateFiltering').hide();
     $('#settings').hide();
+    $('#findBookEntries').hide();
 };
 
 const collapseDropDownMenu = () => {

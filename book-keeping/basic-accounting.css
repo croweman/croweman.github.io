@@ -7,7 +7,7 @@
 .marginBottom {
     margin-bottom: 5px;
 }
-#customerDetails, #bookEntries, #bookEntry, #createCustomerError, #searchError, #results, #findCustomer, #createBookEntryError, #tools, #expense, #expenses, #customers, #settings {
+#customerDetails, #bookEntries, #bookEntry, #createCustomerError, #searchError, #results, #findCustomer, #createBookEntryError, #tools, #expense, #expenses, #customers, #settings, #findBookEntries {
     display: none;
 }
 

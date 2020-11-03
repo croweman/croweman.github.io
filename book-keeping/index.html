@@ -301,12 +301,31 @@
             <div class="col-md-12 clear createButtons">
                 <button id="createBookEntryModal" type="button" class="btn btn-default btn-primary">Entry +</button>
                 <button id="createCustomerModal" type="button" class="btn btn-default btn-primary">Customer +</button>
+                <button id="searchBookEntries" type="button" class="btn btn-default btn-primary">Search</button>
             </div>
+
+            <div id="findBookEntries" class="col-md-12 clear" style="padding-left: 0">
+                <form autocomplete="off">
+                    <div class="panel panel-default clear">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">Find Book Entries</h3>
+                        </div>
+                        <div class="panel-body">
+                            <div class="form-group">
+                                <label for="bookEntryFilter" class="sr-only">Search filter</label>
+                                <input id="bookEntryFilter" class="form-control" required="" autofocus="">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
             <div id="bookEntriesSummary">
                 <h4 style="padding-top: 5px">Total Income: £<span id="total"></span></h4>
                 <h4>Total Miles: <span id="totalMiles"></span></h4>
                 <h4>Total Miles Cost: £<span id="totalMilesCost"></span></h4>
             </div>
+
             <div id="bookEntriesBody"></div>
         </div>
     </div>
