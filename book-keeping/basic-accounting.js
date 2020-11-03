@@ -1035,9 +1035,10 @@ const populateBookEntries = async (providedBookEntries, removeCollapseButton) =>
 }
 
 const download = async () => {
-    let bookEntries = await getAllBookEntries(true);
+    let everything = confirm('Do you want to export everything?');
+    let bookEntries = await getAllBookEntries(everything);
     let customers = await getAllCustomers();
-    let expenses = await getAllExpenses(true);
+    let expenses = await getAllExpenses(everything);
     let settings = await getAllSettings();
 
     let data = {
@@ -1077,6 +1078,50 @@ const download = async () => {
             window.location.href = url;
         }, 2000);
     }
+};
+
+const downloadCsv = async () => {
+    let everything = confirm('Do you want to export everything?');
+    let bookEntries = await getAllBookEntries(everything);
+    let expenses = await getAllExpenses(everything);
+    allCustomers = await getAllCustomers();
+    buildCustomersDictionary(allCustomers);
+
+    var name = getFormattedDate(new Date());
+    name = name.replace(' ', '_');
+    name = name.replace(':', '-');
+    name = name.replace(/\//g, '-');
+    var bookEntriesFileName = 'book-entries-' + name + '.csv';
+    var expensesFileName = 'expenses-' + name + '.csv';
+    var zipFileName = 'book-keeping-' + name + '.zip';
+
+    var zip = new JSZip();
+
+    var csvContent = 'When,Customer,Summary,Amount,Miles\r\n';
+
+    bookEntries.forEach(bookEntry => {
+        let customer = allCustomersDictionary[bookEntry.customerId];
+        let customerInfo = getFriendlyCustomerInformation(customer).replace(/\"/g, '""');
+        let summary = bookEntry.summary.replace(/\"/g, '""');
+        csvContent += '"' + getFormattedDate(bookEntry.when) + '","' + customerInfo + '","' + summary + '",' + bookEntry.amount.toFixed(2) + ',' + customer.miles.toFixed(2) + '\r\n';
+    });
+
+    zip.file(bookEntriesFileName, csvContent);
+
+    csvContent = 'When,Supplier,Summary,Amount,Miles\r\n';
+
+    expenses.forEach(expense => {
+        let supplier = expense.supplier.replace(/\"/g, '""');
+        let summary = expense.summary.replace(/\"/g, '""');
+        csvContent += '"' + getFormattedDate(expense.when) + '","' + supplier + '","' + summary + '",' + expense.amount.toFixed(2) + ',' + expense.miles.toFixed(2) + '\r\n';
+    });
+
+    zip.file(expensesFileName, csvContent);
+
+    var content = await zip.generateAsync({type:"blob", compression: "DEFLATE"});
+
+    // see FileSaver.js
+    saveAs(content, zipFileName);
 };
 
 const updateProgress = progressMade => {
@@ -1326,6 +1371,10 @@ const initialise = () => {
             download();
         });
 
+        $('#downloadAsCsvButton').click(function() {
+            downloadCsv();
+        });
+
         var date = new Date().toISOString();
         date = date.substr(0, date.indexOf('T'));
         $('#defaultWhen').val(date);
@@ -1461,7 +1510,7 @@ const tools = () => {
     $('#expenses').hide();
     $('#expense').hide();
     $('#customers').hide();
-    $('#dateFiltering').hide();
+    $('#dateFiltering').show();
     $('#settings').hide();
     $('#findBookEntries').hide();
 };
