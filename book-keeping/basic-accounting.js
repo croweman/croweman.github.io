@@ -28,6 +28,7 @@ var customer;
 var allCustomers = [];
 var allCustomersDictionary = {};
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const reversedMonthNames = [...monthNames].reverse();
 var defaultWhen = getWhen(new Date());
 var currentView = 'entries';
 var setting;
@@ -931,78 +932,150 @@ const toggleTable = tableId => {
     $('#' + tableId + 'Button').text(buttonText);
 }
 
+var currentGroupings;
+
+const bookEntryDateFiltering = () => {
+    const populateMonths = () => {
+        $('#month').empty();
+        let year = parseInt($('#year').val());
+        let months = Object.keys(currentGroupings[year]);
+
+        months.forEach(month => {
+            $("#month").append(
+                $('<option></option>').val(month).html(month)
+            );
+        });
+    };
+
+    const showRelevantBookEntries = () => {
+        $('.book-entry-container').hide();
+        let year = parseInt($('#year').val());
+        let month = $('#month').val();
+        $(`#${month}${year}`).show();
+    };
+
+    $('#year').blur(() => {
+        populateMonths();
+        showRelevantBookEntries();
+    });
+
+    $('#year').change(() => {
+        populateMonths();
+        showRelevantBookEntries();
+    });
+
+    $('#month').blur(() => {
+        showRelevantBookEntries();
+    });
+
+    $('#month').change(() => {
+        showRelevantBookEntries();
+    });
+};
+
 const processBookEntries = (bookEntries, removeCollapseButton) => {
     var html = "";
     var total = 0;
     var totalMiles = 0;
     var totalMilesCost = 0;
-    var data = {};
-    var keys = [];
+    var totalEntries = 0;
+    var groupings = {};
 
     if (bookEntries.length > 0) {
         $('#bookEntriesSummary').show();
     }
 
     bookEntries.forEach(bookEntry => {
-        var key = getDateLabel(bookEntry.when);
-        
-        if (!data[key]) {
-            data[key] = [];
-            keys.push(key);
+        var year = bookEntry.when.getFullYear();
+        var month = monthNames[bookEntry.when.getMonth()];
+
+        if (groupings[year] === undefined) {
+            groupings[year] = {};
         }
 
-        data[key].push(bookEntry);
+        if (groupings[year][month] === undefined) {
+            groupings[year][month] = [];
+        }
+
+        groupings[year][month].push(bookEntry);
     });
 
     var expand = true;
 
-    keys.forEach(key => {
-        var currentTotal = 0;
-        var currentMiles = 0;
-        var currentMilesCost = 0;
+    $("#year").empty();
+    $("#month").empty();
 
-        data[key].forEach(bookEntry => {
-            var bookEntryCustomer = allCustomersDictionary[bookEntry.customerId];
-            var miles = bookEntryCustomer.miles;
+    var addedMonths = false;
+    var years = Object.keys(groupings);
+    years.sort((a, b) => b - a);
+    
+    years.forEach(year => {
 
-            if (miles === undefined || miles === null)
-                miles = 0;
-
-            total += bookEntry.amount;
-            currentTotal += bookEntry.amount;
-            totalMiles += miles;
-            totalMilesCost += (miles * setting.costPerMile);
-            currentMiles += miles;
-            currentMilesCost += (miles * setting.costPerMile);
-        });
-
-        var tableId = key.replace(' ', '');
-        var entries = data[key].length;
-        var buttonAdditionalText = '&nbsp;&nbsp;(' + entries + ' ' + (entries === 1 ? 'entry' : 'entries') + ')';
-
-        if (!removeCollapseButton) {
-            html += '<div class="form-group"><button id="' + tableId + 'Button"class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample" onclick="toggleTable(\'' + tableId + '\')">' + key + ' ' + buttonAdditionalText + ' ' + (expand ? '-' : '+') + '</button></div>';
-            html += '<div id="' + tableId + '"' + (expand ? '' : ' style="display:none"') + ' class="form-group"><label>Income: £' + currentTotal.toFixed(2) + '</label><br /><label>Miles: ' + currentMiles.toFixed(2) + '</label><br /><label>Miles cost: ' + currentMilesCost.toFixed(2) + '</label>';
-        } else {
-            $('#bookEntriesSummary').hide();
-        }
+        $("#year").append(
+            $('<option></option>').val(year).html(year)
+        );
         
-        html += '<table class="table"><thead><tr><th>Date</th><th>Customer</th><th>Amount</th><th>Miles</th><th>Summary of work</th><th>Delete</th></tr></thead><tbody>';
+        reversedMonthNames.forEach(month => {
+            if (groupings[year][month] === undefined) return;
 
-        data[key].forEach(bookEntry => {
-            var bookEntryCustomer = allCustomersDictionary[bookEntry.customerId];
-            html += '<tr><td><a href="javascript:editBookEntry(' + bookEntry.id + ')">' + getFormattedDate(bookEntry.when) + '</a></td><td>' + bookEntryCustomer.friendly + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + bookEntryCustomer.miles.toFixed(2) + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-primary" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
+            if (!addedMonths) {
+                $("#month").append(
+                    $('<option></option>').val(month).html(month)
+                );      
+            }
+
+            var currentTotal = 0;
+            var currentMiles = 0;
+            var currentMilesCost = 0;
+
+            groupings[year][month].forEach(bookEntry => {
+                var bookEntryCustomer = allCustomersDictionary[bookEntry.customerId];
+                var miles = bookEntryCustomer.miles;
+
+                if (miles === undefined || miles === null)
+                    miles = 0;
+
+                total += bookEntry.amount;
+                currentTotal += bookEntry.amount;
+                totalMiles += miles;
+                totalMilesCost += (miles * setting.costPerMile);
+                totalEntries++;
+                currentMiles += miles;
+                currentMilesCost += (miles * setting.costPerMile);
+            });
+
+            var tableId = `${month}${year}`;
+            var entries = groupings[year][month].length;
+
+            if (!removeCollapseButton) {
+                html += '<div id="' + tableId + '"' + (expand ? '' : ' style="display:none"') + ' class="form-group book-entry-container"><label>Income: £' + currentTotal.toFixed(2) + '</label><br /><label>Entries: ' + entries + '</label><br /><label>Miles: ' + currentMiles.toFixed(2) + '</label><br /><label>Miles cost: ' + currentMilesCost.toFixed(2) + '</label>';
+            } else {
+                $('#bookEntriesSummary').hide();
+            }
+            
+            html += '<table class="table"><thead><tr><th>Date</th><th>Customer</th><th>Amount</th><th>Miles</th><th>Summary of work</th><th>Delete</th></tr></thead><tbody>';
+
+            groupings[year][month].forEach(bookEntry => {
+                var bookEntryCustomer = allCustomersDictionary[bookEntry.customerId];
+                html += '<tr><td><a href="javascript:editBookEntry(' + bookEntry.id + ')">' + getFormattedDate(bookEntry.when) + '</a></td><td>' + bookEntryCustomer.friendly + '</td><td>£' + bookEntry.amount.toFixed(2) + '</td><td>' + bookEntryCustomer.miles.toFixed(2) + '</td><td>' + bookEntry.summary + '</td><td><button type="button" class="btn btn-primary" onclick="deleteBookEntry(' + bookEntry.id  + ')">Delete</button></td></tr>';
+            });
+            
+            html += '</tbody></table></div>';
+            expand = false;
         });
 
-        html += '</tbody></table></div>';
-        expand = false;
+        addedMonths = true;
     });
+
+
+    currentGroupings = groupings;
 
     $('#bookEntriesBody').html(html)
     $('#bookEntries').show();
     $('#total').html(total.toFixed(2));
     $('#totalMiles').html(totalMiles.toFixed(2));
     $('#totalMilesCost').html(totalMilesCost.toFixed(2));
+    $('#totalEntries').html(totalEntries);
 };
 
 const populateBookEntries = async (providedBookEntries, removeCollapseButton) => {
@@ -1030,8 +1103,12 @@ const populateBookEntries = async (providedBookEntries, removeCollapseButton) =>
         return;
     }
 
-    let allBookEntries = await getAllBookEntries();
-    processBookEntries(allBookEntries, removeCollapseButton);
+    try {
+        let allBookEntries = await getAllBookEntries();
+        processBookEntries(allBookEntries, removeCollapseButton);
+    } catch (err) {
+        $('.book-entry-container').hide();
+    }
 }
 
 const download = async () => {
@@ -1366,6 +1443,7 @@ const initialise = () => {
         updateSettings();
         dateFilters();
         searchBookEntries();
+        bookEntryDateFiltering();
 
         $('#downloadButton').click(function() {
             download();
@@ -1461,21 +1539,26 @@ const expenses = async () => {
     var totalMiles = 0;
     var totalMilesCost = 0;
 
-    let expenses = await getAllExpenses();
-    var html = '';
+    try {
+        let expenses = await getAllExpenses();
+        var html = '';
 
-    expenses.forEach(function(expense) {
-        total += expense.amount;
-        totalMiles += expense.miles;
-        totalMilesCost += (expense.miles * setting.costPerMile);
-        html += '<tr><td><a href="javascript:editExpense(' + expense.id + ')">' + getWhen(expense.when, true) + '<a/></td><td>' + expense.supplier  + '</td><td>' + expense.summary + '</td><td>' + expense.amount.toFixed(2) + '</td><td>' + expense.miles.toFixed(2) + '</td><td><button type="button" class="btn btn-primary" onclick="deleteExpense(' + expense.id  + ')">Delete</button></td></tr>';
-    });
+        expenses.forEach(function(expense) {
+            total += expense.amount;
+            totalMiles += expense.miles;
+            totalMilesCost += (expense.miles * setting.costPerMile);
+            html += '<tr><td><a href="javascript:editExpense(' + expense.id + ')">' + getWhen(expense.when, true) + '<a/></td><td>' + expense.supplier  + '</td><td>' + expense.summary + '</td><td>' + expense.amount.toFixed(2) + '</td><td>' + expense.miles.toFixed(2) + '</td><td><button type="button" class="btn btn-primary" onclick="deleteExpense(' + expense.id  + ')">Delete</button></td></tr>';
+        });
 
-    $('#totalExpenses').html(total.toFixed(2));
-    $('#totalExpenseMiles').html(totalMiles.toFixed(2));
-    $('#totalExpenseMilesCost').html(totalMilesCost.toFixed(2));
+        $('#totalExpenses').html(total.toFixed(2));
+        $('#totalExpenseMiles').html(totalMiles.toFixed(2));
+        $('#totalExpenseMilesCost').html(totalMilesCost.toFixed(2));
 
-    $('#expensesBody').append(html);
+        $('#expensesBody').append(html);
+        $('#expensesInfo').show();
+    } catch (err) {
+        $('#expensesInfo').hide();
+    }
 };
 
 const showSettings = async () => {

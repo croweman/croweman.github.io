@@ -323,11 +323,23 @@
             </div>
 
             <div id="bookEntriesSummary">
-                <h4 style="padding-top: 5px">Total Income: £<span id="total"></span></h4>
-                <h4>Total Miles: <span id="totalMiles"></span></h4>
-                <h4>Total Miles Cost: £<span id="totalMilesCost"></span></h4>
-            </div>
+                <h4 style="padding-top: 5px">Income: £<span id="total"></span></h4>
+                <h4>Miles: <span id="totalMiles"></span></h4>
+                <h4>Miles Cost: £<span id="totalMilesCost"></span></h4>
+                <h4>Entries: <span id="totalEntries"></span></h4>
 
+                <div class="col-md-12 clear" style="padding-left: 0;padding-top: 5px">
+                    <div class="form-group" style="width: 45%; float:left">
+                        <label for="year">Year</label>
+                        <select id="year" class="form-control" required=""></select>
+                    </div>
+                    <div class="form-group"  style="width: 45%;float:left;padding-left:15px">
+                        <label for="month">Month</label>
+                        <select id="month" class="form-control" required=""></select>
+                    </div>
+                </div>    
+            </div>
+                 
             <div id="bookEntriesBody"></div>
         </div>
     </div>
@@ -369,26 +381,28 @@
         <div id="expensesButtons" class="col-md-12 clear">
             <button id="createExpenseModal" type="button" class="btn btn-default btn-primary">Expense +</button>
         </div>
-        <div>
-            <h4 style="padding-top: 5px">Total Expenses: £<span id="totalExpenses"></span></h4>
-            <h4>Total Miles: <span id="totalExpenseMiles"></span></h4>
-            <h4>Total Miles Cost: £<span id="totalExpenseMilesCost"></span></h4>
-        </div>
-        <div>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Supplier</th>
-                        <th>Summary</th>
-                        <th>Amount</th>
-                        <th>Miles</th>
-                        <th>Delete</th>
-                    </tr>
-                </thead>
-                <tbody id="expensesBody">
-                </tbody>
-            </table>
+        <div id="expensesInfo">
+            <div>
+                <h4 style="padding-top: 5px">Total Expenses: £<span id="totalExpenses"></span></h4>
+                <h4>Total Miles: <span id="totalExpenseMiles"></span></h4>
+                <h4>Total Miles Cost: £<span id="totalExpenseMilesCost"></span></h4>
+            </div>
+            <div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Supplier</th>
+                            <th>Summary</th>
+                            <th>Amount</th>
+                            <th>Miles</th>
+                            <th>Delete</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expensesBody">
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
