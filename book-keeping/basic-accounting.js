@@ -1089,6 +1089,7 @@ const populateBookEntries = async (providedBookEntries, removeCollapseButton) =>
     $('#findCustomer').hide();
     $('#customers').hide();
     $('#tools').hide();
+    $('#charts').hide();
     $('#expenses').hide();
     $('#expense').hide();
     $('#settings').hide();
@@ -1373,6 +1374,8 @@ const searchBookEntries = () => {
 };
 
 const initialise = () => {
+    google.charts.load('current', {packages: ['corechart', 'line']});
+
     openRequest = indexedDB.open('BookKeeping', 4);
     
     openRequest.onupgradeneeded = function(event) {
@@ -1494,6 +1497,7 @@ const customers = async () => {
     $('#findCustomer').hide();
     $('#bookEntries').hide();
     $('#tools').hide();
+    $('#charts').hide();
     $('#expenses').hide();
     $('#dateFiltering').hide();
     $('#expense').hide();
@@ -1525,6 +1529,7 @@ const expenses = async () => {
     $('#findCustomer').hide();
     $('#bookEntries').hide();
     $('#tools').hide();
+    $('#charts').hide();
     $('#expense').hide();
     $('#dateFiltering').show();
     $('#customers').hide();
@@ -1568,6 +1573,7 @@ const showSettings = async () => {
     $('#findCustomer').hide();
     $('#bookEntries').hide();
     $('#tools').hide();
+    $('#charts').hide();
     $('#expense').hide();
     $('#dateFiltering').hide();
     $('#customers').hide();
@@ -1600,4 +1606,95 @@ const tools = () => {
 
 const collapseDropDownMenu = () => {
     $('#dropDownMenu').removeClass('in');
+};
+
+const getChartData = async () => {
+    let bookEntries = await getAllBookEntries();
+    var groupings = {};
+
+    if (bookEntries.length === 0) {
+        return [];
+    }
+
+    bookEntries.forEach(bookEntry => {
+        var year = bookEntry.when.getFullYear();
+        var month = monthNames[bookEntry.when.getMonth()];
+
+        if (groupings[year] === undefined) {
+            groupings[year] = {};
+        }
+
+        if (groupings[year][month] === undefined) {
+            groupings[year][month] = [];
+        }
+
+        groupings[year][month].push(bookEntry);
+    });
+
+    let chartData = [];
+
+    let years = Object.keys(groupings);
+    
+    years.forEach(year => {
+        
+        monthNames.forEach(month => {
+            if (groupings[year][month] === undefined) {
+                chartData.push([`${month} ${year}`, 0]);
+                return;
+            }
+
+            let amount = 0;
+            
+            groupings[year][month].forEach(bookEntry => {
+                amount += bookEntry.amount;
+            });
+
+            chartData.push([`${month} ${year}`, amount]);
+        });
+
+        addedMonths = true;
+    });
+
+    return chartData;
+};
+
+const charts = async () => {
+    $('#chartData').empty();
+
+    currentView = 'charts';
+    $('#tools').hide();
+    $('#bookEntries').hide();
+    $('#bookEntry').hide();
+    $('#findCustomer').hide();
+    $('#createCustomerError').hide();
+    $('#expenses').hide();
+    $('#expense').hide();
+    $('#customers').hide();
+    $('#dateFiltering').show();
+    $('#settings').hide();
+    $('#findBookEntries').hide();
+
+    var data = new google.visualization.DataTable();
+    data.addColumn('string', 'X');
+    data.addColumn('number', 'Income');
+
+    let chartData = await getChartData();
+
+    data.addRows(chartData);
+
+    var options = {
+        pointSize: 4,
+        hAxis: {
+            title: 'When',
+            slantedText: true,
+            slantedTextAngle: 90,
+        },
+        vAxis: {
+            title: 'Income'
+        }
+    };
+
+    $('#charts').show();
+    var chart = new google.visualization.LineChart(document.getElementById('chartData'));
+    chart.draw(data, options);
 };
