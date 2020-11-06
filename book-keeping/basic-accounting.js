@@ -181,6 +181,10 @@ const dateFiltersChanged = () => {
     if (currentView === 'expenses') {
         expenses();
     }
+
+    if (currentView === 'charts') {
+        charts();
+    }
 };
 
 const dateFilters = () => {
