@@ -1605,6 +1605,7 @@ const tools = () => {
     $('#customers').hide();
     $('#dateFiltering').show();
     $('#settings').hide();
+    $('#charts').hide();
     $('#findBookEntries').hide();
 };
 
