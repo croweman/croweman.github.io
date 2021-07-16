@@ -1603,6 +1603,7 @@ const tools = () => {
     $('#expenses').hide();
     $('#expense').hide();
     $('#customers').hide();
+    $('#customerDetails').hide();
     $('#dateFiltering').show();
     $('#settings').hide();
     $('#charts').hide();
@@ -1675,6 +1676,7 @@ const charts = async () => {
     $('#expenses').hide();
     $('#expense').hide();
     $('#customers').hide();
+    $('#customerDetails').hide();
     $('#dateFiltering').show();
     $('#settings').hide();
     $('#findBookEntries').hide();
