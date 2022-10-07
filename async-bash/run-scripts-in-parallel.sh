@@ -13,103 +13,68 @@ echo 'done' >> $PROGRESS
 chmod +x $PROGRESS
 
 function exiting {
-  echo 'exiting'
+  echo 'Cleaning up'
   rm -f $PROGRESS
+  rm -f ./${STAMP}.txt
+  wait ${PROGRESSPID}
+
+  for SCRIPT in ${SCRIPTS[@]}; do
+    rm -f ${STAMP}-${SCRIPT}-output.txt &
+  done
 }
 trap exiting EXIT
+
+SCRIPTS=$@
+
+echo '===================================='
+echo 'Now running the following scripts in parallel'
+echo '===================================='
+for SCRIPT in ${SCRIPTS[@]}; do
+  echo " - ${SCRIPT}"
+  ./${SCRIPT} >> ${STAMP}-${SCRIPT}-output.txt &
+  PIDS+=($!)
+done
 
 touch ./${STAMP}.txt
 ./${PROGRESS} &
 PROGRESSPID=($!)
 
-scripts=$@
-echo scripts
-echo $scripts
-echo $$
-
-for script in ${scripts[@]}; do
-  echo $script
-  ./${script} &
-  PIDS+=($!)
-done
-
-# info message starting say what scripts are going to be ran, can i show progress
-# looks like i can't do subshell and get pid back for dynamic
-echo 'WE ARE STARTING'
-date +%s
-
-
-
-## wait for all processes to finish, and store each process's exit code into array STATUS[].
-for pid in ${PIDS[@]}; do
-  echo "pid=${pid}"
-  wait ${pid}
+for PID in ${PIDS[@]}; do
+  wait ${PID}
   STATUS+=($?)
 done
 
 rm -f ./${STAMP}.txt
 wait ${PROGRESSPID}
+echo
 
-## after all processes are finished, check their exit codes in STATUS[].
+echo '===================================='
+echo 'Scripts output'
+echo '===================================='
+for SCRIPT in ${SCRIPTS[@]}; do
+  echo
+  echo '===================================='
+  echo "Script: ${SCRIPT}"
+  echo '===================================='
+  cat ${STAMP}-${SCRIPT}-output.txt
+done
+
+echo
+echo '===================================='
+echo 'Script execution results'
+echo '===================================='
+SCRIPTSARRAY=($SCRIPTS)
 i=0
+EXITCODE=0
 for st in ${STATUS[@]}; do
   if [[ ${st} -ne 0 ]]; then
-    echo "$i failed"
+    EXITCODE=1
+    echo " - ${SCRIPTSARRAY[i]}: failed"
   else
-    echo "$i finish"
+    echo " - ${SCRIPTSARRAY[i]}: successful"
   fi
   ((i+=1))
 done
 
-echo ''
-
-# ADD NEW LINES BEFORE OUTPUTTING STUFF BECAUSE OF PROGRESS
-
-# good example
-# https://stackoverflow.com/questions/1570262/get-exit-code-of-a-background-process
-
-# &> outputs error and standard out for log
-#java -jar myProgram.jar &> output.log &
-
-# starts with env vars!!!! sub shell
-#(. ./script-one.sh &)
-#(. ./script-two.sh &)
-
-echo got here
-# what scripts to run? what args?
-
-# run scripts with env
-
-# capture output to file then output it when done?
-
-# MUST EXIT WHEN EVERYTHING COMPLETE
-
-# when terminated should kill child processes
-
-
-
-
-## start 3 child processes concurrently, and store each pid into array PIDS[].
-#process=(a.sh b.sh c.sh)
-#for app in ${process[@]}; do
-#  ./${app} &
-#  PIDS+=($!)
-#done
-
-## wait for all processes to finish, and store each process's exit code into array STATUS[].
-#for pid in ${PIDS[@]}; do
-#  echo "pid=${pid}"
-#  wait ${pid}
-#  STATUS+=($?)
-#done
-#
-## after all processed finish, check their exit codes in STATUS[].
-#i=0
-#for st in ${STATUS[@]}; do
-#  if [[ ${st} -ne 0 ]]; then
-#    echo "$i failed"
-#  else
-#    echo "$i finish"
-#  fi
-#  ((i+=1))
-#done
+echo "exiting with exit code: ${EXITCODE}"
+exit $EXITCODE
