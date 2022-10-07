@@ -2,7 +2,6 @@
 
 STAMP=$(date +%s)
 PROGRESS=$(date +%s).sh
-echo $PROGRESS
 echo '#!/bin/bash' >> $PROGRESS
 echo 'while sleep 2; do' >> $PROGRESS
 echo '  if [[ ! -f '$STAMP'.txt ]]; then' >> $PROGRESS
