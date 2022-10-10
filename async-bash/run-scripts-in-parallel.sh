@@ -12,7 +12,6 @@ echo 'done' >> $PROGRESS
 chmod +x $PROGRESS
 
 function exiting {
-  echo 'Cleaning up'
   rm -f $PROGRESS
   rm -f ./${STAMP}.txt
   wait ${PROGRESSPID}
@@ -25,9 +24,9 @@ trap exiting EXIT
 
 SCRIPTS=$@
 
-echo '===================================='
+echo '============================================='
 echo 'Now running the following scripts in parallel'
-echo '===================================='
+echo '============================================='
 for SCRIPT in ${SCRIPTS[@]}; do
   echo " - ${SCRIPT}"
   ./${SCRIPT} >> ${STAMP}-${SCRIPT}-output.txt &

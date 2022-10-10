@@ -13,6 +13,5 @@ sleep 2
 echo 5
 sleep 2
 echo 6
-echo ONE DONE
-
+echo script-one.sh Complete
 exit 0
