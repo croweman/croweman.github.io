@@ -1,9 +1,6 @@
 #!/bin/bash
 
-echo $A
-echo $B
-
-
+env
 echo 20
 echo 21
 sleep 1
