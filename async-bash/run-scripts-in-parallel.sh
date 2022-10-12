@@ -17,7 +17,7 @@ function exiting {
   wait ${PROGRESSPID}
 
   for SCRIPT in ${SCRIPTS[@]}; do
-    rm -f ${STAMP}-${SCRIPT}-output.txt &
+    rm -f ${SCRIPT}-${STAMP}-output.txt &
   done
 }
 trap exiting EXIT
@@ -29,7 +29,7 @@ echo 'Now running the following scripts in parallel'
 echo '============================================='
 for SCRIPT in ${SCRIPTS[@]}; do
   echo " - ${SCRIPT}"
-  ./${SCRIPT} >> ${STAMP}-${SCRIPT}-output.txt &
+  ./${SCRIPT} >> ${SCRIPT}-${STAMP}-output.txt &
   PIDS+=($!)
 done
 
@@ -46,15 +46,12 @@ rm -f ./${STAMP}.txt
 wait ${PROGRESSPID}
 echo
 
-echo '===================================='
-echo 'Scripts output'
-echo '===================================='
 for SCRIPT in ${SCRIPTS[@]}; do
   echo
   echo '===================================='
-  echo "Script: ${SCRIPT}"
+  echo "Script: ${SCRIPT}" output
   echo '===================================='
-  cat ${STAMP}-${SCRIPT}-output.txt
+  cat ${SCRIPT}-${STAMP}-output.txt
 done
 
 echo
