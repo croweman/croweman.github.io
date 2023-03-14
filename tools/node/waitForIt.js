@@ -1,4 +1,4 @@
-const waitForAssertions = (asyncAssertionFunc, timeoutMilliseconds = 2000, failureMessage) => new Promise((resolve, reject) => {
+export const waitForAssertions = (asyncAssertionFunc, timeoutMilliseconds = 2000, failureMessage = undefined) => new Promise((resolve, reject) => {
     let timeoutId
 
     const intervalId = setInterval(async () => {
@@ -6,7 +6,7 @@ const waitForAssertions = (asyncAssertionFunc, timeoutMilliseconds = 2000, failu
             await asyncAssertionFunc()
             clearTimeout(timeoutId)
             clearInterval(intervalId)
-            return resolve();
+            return resolve({})
         } catch (err) {
             // do nothing
         }
