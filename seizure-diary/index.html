@@ -5,94 +5,302 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seizure Diary</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* General styling */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f8;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #0056b3;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* Chart container */
+        #chartContainer {
+            width: 100%;
+            max-width: 800px;
+            padding: 10px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        canvas {
+            max-height: 400px; /* Limit the chart height */
+        }
+
+        /* Modal styling */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 20px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 70%;
+            overflow-y: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            font-size: 1.5em;
+            margin: 0;
+            color: #333;
+        }
+
+        .close-btn {
+            font-size: 1.2em;
+            cursor: pointer;
+            color: #888;
+            transition: color 0.3s;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        /* Table styling */
+        #seizureTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        #seizureTable thead {
+            background-color: #0056b3;
+            color: white;
+        }
+
+        #seizureTable th, #seizureTable td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        #seizureTable tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        #seizureTable tr:hover {
+            background-color: #f1f1f1;
+        }
+    </style>
 </head>
 <body>
 <h1>Seizure Diary</h1>
-<canvas id="frequencyChart" width="400" height="200"></canvas>
-<canvas id="clusterChart" width="400" height="200" style="display:none;"></canvas>
+
+<div id="chartContainer">
+    <canvas id="frequencyChart"></canvas>
+</div>
+
+<!-- Modal for Seizure Details -->
+<div id="seizureModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Seizure Details</h2>
+            <span class="close-btn" onclick="closeModal()">×</span>
+        </div>
+        <table id="seizureTable">
+            <thead>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Symptoms</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
 
 <script>
     // Sample data
     const seizureData = [
-        { date: "2024-11-14", time: "10:30", symptoms: "Dizziness, light sensitivity" },
-        { date: "2024-11-14", time: "14:00", symptoms: "Loss of consciousness" },
-        { date: "2024-11-15", time: "09:00", symptoms: "Tremors, confusion" }
+        { date: "2024-09-14", time: "10:30", symptoms: "Dizziness, light sensitivity" },
+        { date: "2024-09-14", time: "14:00", symptoms: "Loss of consciousness" },
+        { date: "2024-09-15", time: "09:00", symptoms: "Tremors, confusion" },
+        { date: "2024-10-01", time: "13:00", symptoms: "Loss of balance" },
+        { date: "2024-10-03", time: "16:30", symptoms: "Confusion" },
+        { date: "2024-10-04", time: "08:30", symptoms: "Headache" },
+        { date: "2024-10-04", time: "08:39", symptoms: "Headache" },
+        { date: "2024-10-21", time: "08:39", symptoms: "Headache" },
+        { date: "2024-11-02", time: "08:39", symptoms: "Headache" },
+        { date: "2024-11-09", time: "08:39", symptoms: "Headache" }
     ];
 
-    // Process data to get monthly frequency
-    const frequencyData = seizureData.reduce((acc, { date }) => {
-        const month = date.slice(0, 7);
-        acc[month] = (acc[month] || 0) + 1;
+    // Calculate unique seizure days per month and total seizures per month
+    const seizureStats = seizureData.reduce((acc, { date }) => {
+        const month = date.slice(0, 7); // Extract the YYYY-MM format
+        acc[month] = acc[month] || { uniqueDays: new Set(), totalSeizures: 0 };
+        acc[month].uniqueDays.add(date); // Add unique day
+        acc[month].totalSeizures += 1; // Count total seizures
         return acc;
     }, {});
 
-    const months = Object.keys(frequencyData);
-    const frequencies = Object.values(frequencyData);
+    const months = Object.keys(seizureStats).map(date => {
+        const [year, month] = date.split("-");
+        return `${month}/${year}`;  // Format as MM/YYYY for British date format
+    });
 
-    // Monthly frequency chart
+    const uniqueDayCounts = Object.keys(seizureStats).map(month => seizureStats[month].uniqueDays.size);
+    const totalSeizuresCounts = Object.keys(seizureStats).map(month => seizureStats[month].totalSeizures);
+
+    // Enhanced Line chart with styling
     const ctx1 = document.getElementById('frequencyChart').getContext('2d');
     const frequencyChart = new Chart(ctx1, {
-        type: 'bar',
+        type: 'line',
         data: {
             labels: months,
-            datasets: [{ label: 'Seizures per Month', data: frequencies }]
+            datasets: [
+                {
+                    label: 'Unique Seizure Days per Month',
+                    data: uniqueDayCounts,
+                    borderColor: '#1e90ff',
+                    backgroundColor: 'rgba(30, 144, 255, 0.1)',
+                    fill: true,
+                    pointRadius: 8,
+                    pointHoverRadius: 10,
+                    borderWidth: 2,
+                    pointBackgroundColor: '#1e90ff',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    tension: 0.4
+                },
+                {
+                    label: 'Total Seizures per Month',
+                    data: totalSeizuresCounts,
+                    borderColor: '#ff6347',
+                    backgroundColor: 'rgba(255, 99, 71, 0.1)',
+                    fill: true,
+                    pointRadius: 8,
+                    pointHoverRadius: 10,
+                    borderWidth: 2,
+                    pointBackgroundColor: '#ff6347',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    tension: 0.4
+                }
+            ]
         },
         options: {
+            responsive: true,
+            maintainAspectRatio: false,
             onClick: (event, elements) => {
                 if (elements.length > 0) {
                     const index = elements[0].index;
-                    const selectedMonth = months[index];
-                    showClusterChart(selectedMonth);
+                    const selectedMonth = Object.keys(seizureStats)[index];
+                    showSeizureModal(selectedMonth);
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            const datasetLabel = context.dataset.label;
+                            const value = context.raw;
+                            return `${datasetLabel}: ${value}`;
+                        }
+                    }
+                },
+                legend: {
+                    labels: {
+                        font: {
+                            size: 14
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Month',
+                        font: { size: 16, weight: 'bold' },
+                        color: '#333'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Count',
+                        font: { size: 16, weight: 'bold' },
+                        color: '#333'
+                    },
+                    ticks: {
+                        callback: (value) => Number.isInteger(value) ? value : null,
+                        font: { size: 12 }
+                    },
+                    grid: {
+                        color: 'rgba(200, 200, 200, 0.2)'
+                    }
                 }
             }
         }
     });
 
-    // Function to show cluster chart for specific month
-    function showClusterChart(month) {
+    // Function to show seizure details in a modal for the selected month
+    function showSeizureModal(month) {
+        const modal = document.getElementById('seizureModal');
+        const tbody = document.getElementById('seizureTable').querySelector('tbody');
+        tbody.innerHTML = '';  // Clear existing table rows
+
         // Filter data for the selected month
-        const clusterData = seizureData.filter(({ date }) => date.startsWith(month));
-        if (clusterData.length === 0) {
-            alert("No seizures recorded for this month.");
-            return;
-        }
+        const monthlySeizures = seizureData.filter(({ date }) => date.startsWith(month));
 
-        const times = clusterData.map(({ date, time }) => `${date} ${time}`);
-        const symptoms = clusterData.map(({ symptoms }) => symptoms);
-
-        // Clear existing chart and display the new one
-        const ctx2 = document.getElementById('clusterChart').getContext('2d');
-        document.getElementById('clusterChart').style.display = 'block';
-
-        // Check if clusterChart already exists and destroy it if it does
-        if (window.clusterChart instanceof Chart) {
-            window.clusterChart.destroy();
-        }
-
-        // Create a new clusterChart
-        window.clusterChart = new Chart(ctx2, {
-            type: 'line',
-            data: {
-                labels: times,
-                datasets: [{ label: `Seizures in ${month}`, data: Array(times.length).fill(1) }]
-            },
-            options: {
-                scales: {
-                    x: { title: { display: true, text: 'Time' } },
-                    y: { display: false }
-                },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return symptoms[context.dataIndex];
-                            }
-                        }
-                    }
-                }
-            }
+        // Populate table rows with individual seizures in British format (DD/MM/YYYY)
+        monthlySeizures.forEach(({ date, time, symptoms }) => {
+            const [year, month, day] = date.split("-");
+            const britishDate = `${day}/${month}/${year}`;
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${britishDate}</td><td>${time}</td><td>${symptoms}</td>`;
+            tbody.appendChild(row);
         });
+
+        // Show the modal
+        modal.style.display = 'flex';
     }
+
+    // Function to close the modal
+    function closeModal() {
+        document.getElementById('seizureModal').style.display = 'none';
+    }
+
+    // Close the modal when clicking outside of it
+    window.onclick = function(event) {
+        const modal = document.getElementById('seizureModal');
+        if (event.target === modal) {
+            closeModal();
+        }
+    };
 </script>
 </body>
 </html>
