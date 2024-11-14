@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seizure Diary</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<h1>Seizure Diary</h1>
+<canvas id="frequencyChart" width="400" height="200"></canvas>
+<canvas id="clusterChart" width="400" height="200" style="display:none;"></canvas>
+
+<script>
+    // Sample data
+    const seizureData = [
+        { date: "2024-11-14", time: "10:30", symptoms: "Dizziness, light sensitivity" },
+        { date: "2024-11-14", time: "14:00", symptoms: "Loss of consciousness" },
+        { date: "2024-11-15", time: "09:00", symptoms: "Tremors, confusion" }
+    ];
+
+    // Process data to get monthly frequency
+    const frequencyData = seizureData.reduce((acc, { date }) => {
+        const month = date.slice(0, 7);
+        acc[month] = (acc[month] || 0) + 1;
+        return acc;
+    }, {});
+
+    const months = Object.keys(frequencyData);
+    const frequencies = Object.values(frequencyData);
+
+    // Monthly frequency chart
+    const ctx1 = document.getElementById('frequencyChart').getContext('2d');
+    const frequencyChart = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: [{ label: 'Seizures per Month', data: frequencies }]
+        },
+        options: {
+            onClick: (event, elements) => {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const selectedMonth = months[index];
+                    showClusterChart(selectedMonth);
+                }
+            }
+        }
+    });
+
+    // Function to show cluster chart for specific month
+    function showClusterChart(month) {
+        // Filter data for the selected month
+        const clusterData = seizureData.filter(({ date }) => date.startsWith(month));
+        if (clusterData.length === 0) {
+            alert("No seizures recorded for this month.");
+            return;
+        }
+
+        const times = clusterData.map(({ date, time }) => `${date} ${time}`);
+        const symptoms = clusterData.map(({ symptoms }) => symptoms);
+
+        // Clear existing chart and display the new one
+        const ctx2 = document.getElementById('clusterChart').getContext('2d');
+        document.getElementById('clusterChart').style.display = 'block';
+
+        // Check if clusterChart already exists and destroy it if it does
+        if (window.clusterChart instanceof Chart) {
+            window.clusterChart.destroy();
+        }
+
+        // Create a new clusterChart
+        window.clusterChart = new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: times,
+                datasets: [{ label: `Seizures in ${month}`, data: Array(times.length).fill(1) }]
+            },
+            options: {
+                scales: {
+                    x: { title: { display: true, text: 'Time' } },
+                    y: { display: false }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return symptoms[context.dataIndex];
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>
