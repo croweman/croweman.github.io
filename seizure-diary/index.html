@@ -129,6 +129,10 @@
             <h2>Seizure Details</h2>
             <span class="close-btn" onclick="closeModal()">×</span>
         </div>
+        <div id="summary">
+            <p><strong>Unique Seizure Days:</strong> <span id="uniqueSeizureDays"></span></p>
+            <p><strong>Total Seizures:</strong> <span id="totalSeizures"></span></p>
+        </div>
         <table id="seizureTable">
             <thead>
             <tr>
@@ -141,6 +145,7 @@
         </table>
     </div>
 </div>
+
 
 <script>
     // Sample data
@@ -307,6 +312,7 @@
 
     // Enhanced Line chart with styling
     const ctx1 = document.getElementById('frequencyChart').getContext('2d');
+
     const frequencyChart = new Chart(ctx1, {
         type: 'line',
         data: {
@@ -318,8 +324,8 @@
                     borderColor: '#1e90ff',
                     backgroundColor: 'rgba(30, 144, 255, 0.1)',
                     fill: true,
-                    pointRadius: 8,
-                    pointHoverRadius: 10,
+                    pointRadius: 10,
+                    pointHoverRadius: 12,
                     borderWidth: 2,
                     pointBackgroundColor: '#1e90ff',
                     pointBorderColor: '#fff',
@@ -332,8 +338,8 @@
                     borderColor: '#ff6347',
                     backgroundColor: 'rgba(255, 99, 71, 0.1)',
                     fill: true,
-                    pointRadius: 8,
-                    pointHoverRadius: 10,
+                    pointRadius: 10,
+                    pointHoverRadius: 12,
                     borderWidth: 2,
                     pointBackgroundColor: '#ff6347',
                     pointBorderColor: '#fff',
@@ -347,15 +353,26 @@
             maintainAspectRatio: false,
             onClick: (event, elements) => {
                 if (elements.length > 0) {
-                    const index = elements[0].index; // Get the clicked index
+                    // Get the index of the clicked point
+                    const index = elements[0].index;
+
+                    // Get values from both datasets
+                    const uniqueSeizureDays = uniqueDayCounts[index];
+                    const totalSeizures = totalSeizuresCounts[index];
+
+                    // Show table with details for the selected month
                     const selectedMonth = Object.keys(seizureStats)[index];
+
+                    // Update modal with summary values and table
+                    document.getElementById('uniqueSeizureDays').textContent = uniqueSeizureDays;
+                    document.getElementById('totalSeizures').textContent = totalSeizures;
                     showSeizureModal(selectedMonth);
-                } else {
-                    console.log('No element clicked');
                 }
             },
             plugins: {
                 tooltip: {
+                    mode: 'nearest',
+                    intersect: false,
                     callbacks: {
                         label: (context) => {
                             const datasetLabel = context.dataset.label;
@@ -405,9 +422,7 @@
         }
     });
 
-
-
-    // Function to show seizure details in a modal for the selected month
+    // Function to show the modal with summary and table
     function showSeizureModal(month) {
         const modal = document.getElementById('seizureModal');
         const tbody = document.getElementById('seizureTable').querySelector('tbody');
@@ -433,6 +448,7 @@
     function closeModal() {
         document.getElementById('seizureModal').style.display = 'none';
     }
+
 
     // Close the modal when clicking outside of it
     window.onclick = function(event) {
