@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seizure Diary</title>
     <script src="./chart.js"></script>
+    <script src="./chart-datalabels.js"></script>
     <style>
         /* General styling */
         body {
@@ -352,24 +353,40 @@
             responsive: true,
             maintainAspectRatio: false,
             onClick: (event, elements) => {
+                // Ensure clicks work
                 if (elements.length > 0) {
-                    // Get the index of the clicked point
                     const index = elements[0].index;
 
-                    // Get values from both datasets
+                    // Get values for the clicked point
                     const uniqueSeizureDays = uniqueDayCounts[index];
                     const totalSeizures = totalSeizuresCounts[index];
 
-                    // Show table with details for the selected month
+                    // Update modal with values
                     const selectedMonth = Object.keys(seizureStats)[index];
-
-                    // Update modal with summary values and table
                     document.getElementById('uniqueSeizureDays').textContent = uniqueSeizureDays;
                     document.getElementById('totalSeizures').textContent = totalSeizures;
                     showSeizureModal(selectedMonth);
                 }
             },
             plugins: {
+                datalabels: {
+                    display: true,
+                    align: 'top',
+                    anchor: 'end',
+                    font: {
+                        size: 12,
+                        weight: 'bold'
+                    },
+                    formatter: (value, context) => {
+                        return value;
+                    },
+                    listeners: {
+                        click: function () {
+                            // Prevent datalabels from handling clicks
+                            return false;
+                        }
+                    }
+                },
                 tooltip: {
                     mode: 'nearest',
                     intersect: false,
@@ -419,8 +436,10 @@
                     }
                 }
             }
-        }
+        },
+        plugins: [ChartDataLabels]
     });
+
 
     // Function to show the modal with summary and table
     function showSeizureModal(month) {
