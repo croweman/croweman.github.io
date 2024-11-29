@@ -90,28 +90,28 @@
         }
 
         /* Table styling */
-        #seizureTable {
+        #seizureTable, #medication {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
         }
 
-        #seizureTable thead {
+        #seizureTable thead, #medication thead {
             background-color: #0056b3;
             color: white;
         }
 
-        #seizureTable th, #seizureTable td {
+        #seizureTable th, #seizureTable td, #medication th, #medication td {
             padding: 12px 15px;
             text-align: left;
             border-bottom: 1px solid #ddd;
         }
 
-        #seizureTable tr:nth-child(even) {
+        #seizureTable tr:nth-child(even), #medication tr:nth-child(even) {
             background-color: #f9f9f9;
         }
 
-        #seizureTable tr:hover {
+        #seizureTable tr:hover, #medication tr:hover {
             background-color: #f1f1f1;
         }
     </style>
@@ -147,6 +147,33 @@
     </div>
 </div>
 
+<div>
+    <h3>Medication changes</h3>
+    <table id="medication">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Medication</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>05/03/2024</td><td>Levetiracetam 1250mg in evening</td></tr>
+            <tr><td>04/04/2024</td><td>Levetiracetam 1250mg in morning</td></tr>
+            <tr><td>17/04/2024</td><td>Levetiracetam 1500mg in evening</td></tr>
+            <tr><td>30/04/2024</td><td>Levetiracetam 1500mg in morning</td></tr>
+            <tr><td>21/06/2024</td><td>Lamotrogine 25mg in evening</td></tr>
+            <tr><td>21/06/2024</td><td>Lamotrogine 25mg in evening</td></tr>
+            <tr><td>05/07/2024</td><td>Lamotrogine 25mg in morning</td></tr>
+            <tr><td>19/07/2024</td><td>Lamotrogine 50mg in evening</td></tr>
+            <tr><td>02/08/2024</td><td>Lamotrogine 50mg in morning</td></tr>
+            <tr><td>16/08/2024</td><td>Lamotrogine 75mg in evening</td></tr>
+            <tr><td>30/08/2024</td><td>Lamotrogine 75mg in morning</td></tr>
+            <tr><td>13/09/2024</td><td>Lamotrogine 100mg in evening</td></tr>
+            <tr><td>27/09/2024</td><td>Lamotrogine 100mg in morning</td></tr>
+            <tr><td>19/11/2024</td><td>Lamotrogine 125mg in evening</td></tr>
+        </tbody>
+    </table>
+</div>
 
 <script>
     // Sample data
@@ -291,6 +318,9 @@
         { date: "2024-11-14", time: "08:55", symptoms: "Stronger" },
         { date: "2024-11-16", time: "15:40", symptoms: "" },
         { date: "2024-11-17", time: "16:58", symptoms: "" },
+        { date: "2024-11-26", time: "17:10", symptoms: "Same as usual" },
+        { date: "2024-11-28", time: "09:15", symptoms: "Same as usual but needing a pooh" },
+        { date: "2024-11-28", time: "18:25", symptoms: "mild" },
 
     ];
 
@@ -440,7 +470,6 @@
         plugins: [ChartDataLabels]
     });
 
-
     // Function to show the modal with summary and table
     function showSeizureModal(month) {
         const modal = document.getElementById('seizureModal');
@@ -454,6 +483,13 @@
         monthlySeizures.forEach(({ date, time, symptoms }) => {
             const [year, month, day] = date.split("-");
             const britishDate = `${day}/${month}/${year}`;
+            const queryString = window.location.search;
+            const params = new URLSearchParams(queryString);
+
+            if (!params.has('ss')) {
+                symptoms = '';
+            }
+
             const row = document.createElement('tr');
             row.innerHTML = `<td>${britishDate}</td><td>${time}</td><td>${symptoms}</td>`;
             tbody.appendChild(row);
