@@ -147,7 +147,7 @@
     </div>
 </div>
 
-<div>
+<div id="medicationChanges" style="display: none">
     <h3>Medication changes</h3>
     <table id="medication">
         <thead>
@@ -473,9 +473,17 @@
 
     // Function to show the modal with summary and table
     function showSeizureModal(month) {
+        const queryString = window.location.search;
+        const params = new URLSearchParams(queryString);
         const modal = document.getElementById('seizureModal');
+        const thead = document.getElementById('seizureTable').querySelector('thead');
         const tbody = document.getElementById('seizureTable').querySelector('tbody');
         tbody.innerHTML = '';  // Clear existing table rows
+
+        if (!params.has('ss')) {
+            const ths = thead.querySelectorAll("th");
+            ths[ths.length - 1].remove();
+        }
 
         // Filter data for the selected month
         const monthlySeizures = seizureData.filter(({ date }) => date.startsWith(month));
@@ -484,15 +492,17 @@
         monthlySeizures.forEach(({ date, time, symptoms }) => {
             const [year, month, day] = date.split("-");
             const britishDate = `${day}/${month}/${year}`;
-            const queryString = window.location.search;
-            const params = new URLSearchParams(queryString);
 
             if (!params.has('ss')) {
                 symptoms = '';
             }
 
             const row = document.createElement('tr');
-            row.innerHTML = `<td>${britishDate}</td><td>${time}</td><td>${symptoms}</td>`;
+
+            if (params.has('ss'))
+                row.innerHTML = `<td>${britishDate}</td><td>${time}</td><td>${symptoms}</td>`;
+            else
+                row.innerHTML = `<td>${britishDate}</td><td>${time}</td>`;
             tbody.appendChild(row);
         });
 
@@ -505,7 +515,6 @@
         document.getElementById('seizureModal').style.display = 'none';
     }
 
-
     // Close the modal when clicking outside of it
     window.onclick = function(event) {
         const modal = document.getElementById('seizureModal');
@@ -513,6 +522,28 @@
             closeModal();
         }
     };
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const table = document.getElementById("medication");
+        const tbody = table.querySelector("tbody");
+
+        // Get all rows from the table body
+        const rows = Array.from(tbody.querySelectorAll("tr"));
+
+        // Sort rows by the date in descending order
+        rows.sort((a, b) => {
+            const dateA = new Date(a.cells[0].textContent.split("/").reverse().join("-"));
+            const dateB = new Date(b.cells[0].textContent.split("/").reverse().join("-"));
+            return dateB - dateA; // Descending order
+        });
+
+        // Clear the current tbody and append the sorted rows
+        tbody.innerHTML = "";
+        rows.forEach(row => tbody.appendChild(row));
+
+        const medicationChangesDiv = document.getElementById("medicationChanges");
+        medicationChangesDiv.style.display = "block";
+    });
 </script>
 </body>
 </html>
