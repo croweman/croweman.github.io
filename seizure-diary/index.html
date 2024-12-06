@@ -117,9 +117,10 @@
     </style>
 </head>
 <body>
-<h1>Seizure Diary</h1>
+<h1>Seizure Diary></h1>
 
 <div id="chartContainer">
+    <div id="years" style="float: right;"></div>
     <canvas id="frequencyChart" style="max-height: 500px; height: 500px; width: 100%;"></canvas>
 </div>
 
@@ -177,6 +178,9 @@
 </div>
 
 <script>
+    var chartLoaded = false;
+    var frequencyChart = null;
+
     // Sample data
     const seizureData = [
         { date: "2024-02-25", time: "10:30", symptoms: "Belly and head feeling strange (stopped driving)" },
@@ -325,151 +329,169 @@
 
     ];
 
-    // Calculate unique seizure days per month and total seizures per month
-    const seizureStats = seizureData.reduce((acc, { date }) => {
-        const month = date.slice(0, 7); // Extract the YYYY-MM format
-        acc[month] = acc[month] || { uniqueDays: new Set(), totalSeizures: 0 };
-        acc[month].uniqueDays.add(date); // Add unique day
-        acc[month].totalSeizures += 1; // Count total seizures
-        return acc;
-    }, {});
-
-    const months = Object.keys(seizureStats).map(date => {
-        const [year, month] = date.split("-");
-        return `${month}/${year}`;  // Format as MM/YYYY for British date format
+    seizureData.sort((a, b) => {
+        const dateTimeA = new Date(`${a.date}T${a.time}`);
+        const dateTimeB = new Date(`${b.date}T${b.time}`);
+        return dateTimeA - dateTimeB;
     });
-
-    const uniqueDayCounts = Object.keys(seizureStats).map(month => seizureStats[month].uniqueDays.size);
-    const totalSeizuresCounts = Object.keys(seizureStats).map(month => seizureStats[month].totalSeizures);
 
     // Enhanced Line chart with styling
     const ctx1 = document.getElementById('frequencyChart').getContext('2d');
 
-    const frequencyChart = new Chart(ctx1, {
-        type: 'line',
-        data: {
-            labels: months,
-            datasets: [
-                {
-                    label: 'Unique Seizure Days per Month',
-                    data: uniqueDayCounts,
-                    borderColor: '#1e90ff',
-                    backgroundColor: 'rgba(30, 144, 255, 0.1)',
-                    fill: true,
-                    pointRadius: 10,
-                    pointHoverRadius: 12,
-                    borderWidth: 2,
-                    pointBackgroundColor: '#1e90ff',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    tension: 0.4
-                },
-                {
-                    label: 'Total Seizures per Month',
-                    data: totalSeizuresCounts,
-                    borderColor: '#ff6347',
-                    backgroundColor: 'rgba(255, 99, 71, 0.1)',
-                    fill: true,
-                    pointRadius: 10,
-                    pointHoverRadius: 12,
-                    borderWidth: 2,
-                    pointBackgroundColor: '#ff6347',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    tension: 0.4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            onClick: (event, elements) => {
-                // Ensure clicks work
-                if (elements.length > 0) {
-                    const index = elements[0].index;
+    const showChart = (year) => {
+        if (frequencyChart) {
+            frequencyChart.destroy();
+        }
 
-                    // Get values for the clicked point
-                    const uniqueSeizureDays = uniqueDayCounts[index];
-                    const totalSeizures = totalSeizuresCounts[index];
+        // Calculate unique seizure days per month and total seizures per month
+        const filteredSeizureData = seizureData.filter(x => new Date(x.date).getFullYear() === year);
 
-                    // Update modal with values
-                    const selectedMonth = Object.keys(seizureStats)[index];
-                    document.getElementById('uniqueSeizureDays').textContent = uniqueSeizureDays;
-                    document.getElementById('totalSeizures').textContent = totalSeizures;
-                    showSeizureModal(selectedMonth);
-                }
+        const seizureStats = filteredSeizureData.reduce((acc, { date }) => {
+            const month = date.slice(0, 7); // Extract the YYYY-MM format
+            acc[month] = acc[month] || { uniqueDays: new Set(), totalSeizures: 0 };
+            acc[month].uniqueDays.add(date); // Add unique day
+            acc[month].totalSeizures += 1; // Count total seizures
+            return acc;
+        }, {});
+
+        const months = Object.keys(seizureStats).map(date => {
+            const [year, month] = date.split("-");
+            return `${month}/${year}`;  // Format as MM/YYYY for British date format
+        });
+
+        const uniqueDayCounts = Object.keys(seizureStats).map(month => seizureStats[month].uniqueDays.size);
+        const totalSeizuresCounts = Object.keys(seizureStats).map(month => seizureStats[month].totalSeizures);
+
+        frequencyChart = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [
+                    {
+                        label: 'Unique Seizure Days per Month',
+                        data: uniqueDayCounts,
+                        borderColor: '#1e90ff',
+                        backgroundColor: 'rgba(30, 144, 255, 0.1)',
+                        fill: true,
+                        pointRadius: 10,
+                        pointHoverRadius: 12,
+                        borderWidth: 2,
+                        pointBackgroundColor: '#1e90ff',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Total Seizures per Month',
+                        data: totalSeizuresCounts,
+                        borderColor: '#ff6347',
+                        backgroundColor: 'rgba(255, 99, 71, 0.1)',
+                        fill: true,
+                        pointRadius: 10,
+                        pointHoverRadius: 12,
+                        borderWidth: 2,
+                        pointBackgroundColor: '#ff6347',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        tension: 0.4
+                    }
+                ]
             },
-            plugins: {
-                datalabels: {
-                    display: true,
-                    align: 'top',
-                    anchor: 'end',
-                    font: {
-                        size: 12,
-                        weight: 'bold'
-                    },
-                    formatter: (value, context) => {
-                        return value;
-                    },
-                    listeners: {
-                        click: function () {
-                            // Prevent datalabels from handling clicks
-                            return false;
-                        }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                onClick: (event, elements) => {
+                    // Ensure clicks work
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+
+                        // Get values for the clicked point
+                        const uniqueSeizureDays = uniqueDayCounts[index];
+                        const totalSeizures = totalSeizuresCounts[index];
+
+                        // Update modal with values
+                        const selectedMonth = Object.keys(seizureStats)[index];
+                        document.getElementById('uniqueSeizureDays').textContent = uniqueSeizureDays;
+                        document.getElementById('totalSeizures').textContent = totalSeizures;
+                        showSeizureModal(selectedMonth);
                     }
                 },
-                tooltip: {
-                    mode: 'nearest',
-                    intersect: false,
-                    callbacks: {
-                        label: (context) => {
-                            const datasetLabel = context.dataset.label;
-                            const value = context.raw;
-                            return `${datasetLabel}: ${value}`;
-                        }
-                    }
-                },
-                legend: {
-                    labels: {
+                plugins: {
+                    datalabels: {
+                        display: true,
+                        align: 'top',
+                        anchor: 'end',
                         font: {
-                            size: 14
+                            size: 12,
+                            weight: 'bold'
+                        },
+                        formatter: (value, context) => {
+                            return value;
+                        },
+                        listeners: {
+                            click: function () {
+                                // Prevent datalabels from handling clicks
+                                return false;
+                            }
+                        }
+                    },
+                    tooltip: {
+                        mode: 'nearest',
+                        intersect: false,
+                        callbacks: {
+                            label: (context) => {
+                                const datasetLabel = context.dataset.label;
+                                const value = context.raw;
+                                return `${datasetLabel}: ${value}`;
+                            }
+                        }
+                    },
+                    legend: {
+                        labels: {
+                            font: {
+                                size: 14
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Month',
+                            font: { size: 16, weight: 'bold' },
+                            color: '#333'
+                        },
+                        ticks: {
+                            maxRotation: 90,
+                            minRotation: 90,
+                            font: { size: 12 }
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Count',
+                            font: { size: 16, weight: 'bold' },
+                            color: '#333'
+                        },
+                        ticks: {
+                            font: { size: 14 },
+                            padding: 10
+                        },
+                        grid: {
+                            color: 'rgba(200, 200, 200, 0.2)'
                         }
                     }
                 }
             },
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Month',
-                        font: { size: 16, weight: 'bold' },
-                        color: '#333'
-                    },
-                    ticks: {
-                        maxRotation: 90,
-                        minRotation: 90,
-                        font: { size: 12 }
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Count',
-                        font: { size: 16, weight: 'bold' },
-                        color: '#333'
-                    },
-                    ticks: {
-                        font: { size: 14 },
-                        padding: 10
-                    },
-                    grid: {
-                        color: 'rgba(200, 200, 200, 0.2)'
-                    }
-                }
-            }
-        },
-        plugins: [ChartDataLabels]
-    });
+            plugins: [ChartDataLabels]
+        });
+
+        chartLoaded = true;
+    }
+
+    showChart(new Date().getFullYear());
 
     // Function to show the modal with summary and table
     function showSeizureModal(month) {
@@ -543,6 +565,25 @@
 
         const medicationChangesDiv = document.getElementById("medicationChanges");
         medicationChangesDiv.style.display = "block";
+
+        const years = [...new Set(seizureData.map(entry => new Date(entry.date).getFullYear()))];
+        years.sort((a, b) => b - a);
+
+        const select = document.createElement("select");
+        select.id = "yearDropdown";
+
+        years.forEach(year => {
+            const option = document.createElement("option");
+            option.value = year;
+            option.textContent = year;
+            select.appendChild(option);
+        });
+
+        document.getElementById('years').appendChild(select);
+
+        select.addEventListener("change", function () {
+            showChart(parseInt(this.value));
+        });
     });
 </script>
 </body>
