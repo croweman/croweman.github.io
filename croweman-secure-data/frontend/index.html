@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>croweman-secure-data</title>
+    <link href="assets/css/styles.css" rel="stylesheet"/>
+    <link href="assets/css/font-awesome.min.css" rel="stylesheet"/>
+
+</head>
+<body>
+
+<div class="container">
+
+    <div id="entries">
+
+        <a href="#" id="export" class="button">Export</a>
+        <a href="#" id="export-decrypted" class="button">Export decrypted</a>
+        <a href="#" id="import" class="button">Import</a>
+        <a href="#" id="import-encrypted" class="button">Import encrypted</a>
+
+        <i id="createGroup" class="fa fa-folder-o fa-2x" title="Create group"></i>
+
+        <div class="heading main-heading">Groups and Entries</div>
+
+        <ul id="data">
+
+        </ul>
+
+    </div>
+
+    <div id="group-container">
+
+        <div id="group-heading" class="heading">Group</div>
+
+        <div id="group">
+            <div class="row">
+                <div class="cell cell-one label">
+                    Title:
+                </div>
+                <div class="cell">
+                    <input type="text" class="text-input" id="groupTitle" name="groupTitle" />
+                </div>
+            </div>
+
+            <div class="buttons">
+                <a href="#" id="addGroup" class="button">Add</a>
+                <a href="#" id="updateGroup" class="button">Update</a>
+                <a href="#" id="removeGroup" class="button">Remove</a>
+                <a href="#" id="cancelGroup" class="button">Cancel</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="entry-container">
+
+        <div id="entry-heading" class="heading">Entry</div>
+
+        <div id="entry">
+            <div class="row">
+                <div class="cell cell-one label">
+                    Title:
+                </div>
+                <div class="cell">
+                    <input type="text" class="text-input" id="title" name="title" />
+                </div>
+            </div>
+            <div class="row">
+                <div class="cell cell-one label">
+                    User name:
+                </div>
+                <div class="cell label">
+                    <input type="text" class="text-input" id="userName" name="userName" />
+                    <input type="button" class="copy-button" id="copyUserName" data-copytarget="#userName" value="Copy" />
+                </div>
+            </div>
+            <div class="row">
+                <div class="cell cell-one label">
+                    Email:
+                </div>
+                <div class="cell">
+                    <input type="text" class="text-input" id="email" name="email" />
+                    <input type="button" class="copy-button" id="copyEmail" data-copytarget="#email" value="Copy" />
+                </div>
+            </div>
+            <div class="row">
+                <div class="cell cell-one label">
+                    Password:
+                </div>
+                <div class="cell">
+                    <input type="text" class="text-input" id="password" name="password" />
+                    <input type="button" class="copy-button" id="copyPassword" data-copytarget="#password" value="Copy" />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="cell cell-one label">
+                    Other:
+                </div>
+                <div class="cell">
+                    <textarea class="text-multi" cols="40" rows="5" id="other" name="other"></textarea>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <a href="#" id="addEntry" class="button">Add</a>
+                <a href="#" id="updateEntry" class="button">Update</a>
+                <a href="#" id="removeEntry" class="button">Remove</a>
+                <a href="#" id="cancelEntry" class="button">Cancel</a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Include our script files -->
+<script src="assets/js/jquery-1.11.0.min.js"></script>
+<script src="assets/js/script.js"></script>
+
+</body>
+</html>
+
+

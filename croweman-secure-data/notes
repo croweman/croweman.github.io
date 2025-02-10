@@ -1,0 +1,20 @@
+
+
+prompt for key if not entered!
+
+
+
+Example usage:
+
+required arguments:
+
+-k key
+
+optional arguments:
+
+-p port number
+-n keyname in environment variables
+
+node ./index.js -p 3001 -k examplKey1
+
+node ./index.js -p 3001 -n SHELL
