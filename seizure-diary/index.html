@@ -550,7 +550,9 @@
 
         if (!params.has('ss')) {
             const ths = thead.querySelectorAll("th");
-            ths[ths.length - 1].remove();
+
+            if (ths.length > 2)
+                ths[ths.length - 1].remove();
         }
 
         // Filter data for the selected month
