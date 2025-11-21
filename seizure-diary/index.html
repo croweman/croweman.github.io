@@ -404,7 +404,7 @@
         { date: "2025-11-13", time: "04:35", symptoms: "Bed (not sure), again funny belly in the night I think, felt funny maybe not head and willy" },
         { date: "2025-11-15", time: "09:15", symptoms: "Washing dog, belly, willy feeling hot" },
         { date: "2025-11-17", time: "07:25", symptoms: "Usual but came over all hot and maybe a bit funny in head" },
-        { date: "2025-11-19", time: "05:40", symptoms: "Usual but came over all hot and maybe a bit funny in head" }
+        { date: "2025-11-19", time: "04:50", symptoms: "Usual but was also shaking" }
     ];
 
     seizureData.sort((a, b) => {
@@ -412,6 +412,23 @@
         const dateTimeB = new Date(`${b.date}T${b.time}`);
         return dateTimeA - dateTimeB;
     });
+
+    let allYearsAndMonths = [];
+
+    seizureData.forEach(item => {
+        let itemDate = new Date(item.date);
+        const year = itemDate.getFullYear();
+        const month = itemDate.getMonth();
+
+        let match = allYearsAndMonths.find(x => x.year === year && x.month === month);
+
+        if (match)
+            return;
+
+        allYearsAndMonths.push({ year, month });
+    })
+
+    
 
     // Enhanced Line chart with styling
     const ctx1 = document.getElementById('frequencyChart').getContext('2d');
