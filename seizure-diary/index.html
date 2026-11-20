@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Seizure Diary</title>
     <script src="./chart.js"></script>
     <script src="./chart-datalabels.js"></script>
+    <script src="./seizure-data.js"></script>
     <style>
         /* General styling */
         body {
@@ -31,7 +32,7 @@
         /* Chart container */
         #chartContainer {
             width: 100%;
-            
+
             padding: 10px;
             background-color: #ffffff;
             border-radius: 8px;
@@ -203,361 +204,6 @@
     var chartLoaded = false;
     var frequencyChart = null;
 
-    // Sample data
-    const seizureData = [
-        { date: "2024-02-25", time: "10:30", symptoms: "Belly and head feeling strange (stopped driving)" },
-        { date: "2024-02-28", time: "16:45", symptoms: "Belly and head feeling strange" },
-        { date: "2024-03-01", time: "19:00", symptoms: "Belly and head feeling strange (on walk)" },
-        { date: "2024-03-02", time: "22:05", symptoms: "Belly and head feeling strange - sitting on bed, pupils enlarged" },
-        { date: "2024-03-03", time: "20:15", symptoms: "Belly and head feeling strange - (on walk jumped to look over a fence)" },
-        { date: "2024-03-04", time: "20:15", symptoms: "Belly and head feeling strange - in bed, affected speech and swallowing a lot" },
-        { date: "2024-03-07", time: "09:20", symptoms: "Belly and head feeling strange" },
-        { date: "2024-03-07", time: "16:50", symptoms: "Belly and head feeling strange after putting head down looking in tool bad then stretching up to look at light fitting" },
-        { date: "2024-03-08", time: "17:00", symptoms: "" },
-        { date: "2024-03-10", time: "12:30", symptoms: "Being driven in car" },
-        { date: "2024-03-13", time: "11:55", symptoms: "Sitting down working" },
-        { date: "2024-03-14", time: "15:15", symptoms: "Strange feeling in head" },
-        { date: "2024-03-15", time: "15:40", symptoms: "Walking dogs" },
-        { date: "2024-03-20", time: "17:10", symptoms: "Taking dog for a wee outside" },
-        { date: "2024-03-25", time: "12:30", symptoms: "Sitting at desk. Strange feeling in head and swallowing" },
-        { date: "2024-03-25", time: "16:55", symptoms: "Funny belly and head" },
-        { date: "2024-03-26", time: "16:50", symptoms: "Talking to somebody outside and got feeling in belly and head" },
-        { date: "2024-03-26", time: "21:40", symptoms: "In bed" },
-        { date: "2024-03-27", time: "12:35", symptoms: "Eating lunch" },
-        { date: "2024-03-28", time: "17:20", symptoms: "Weeing" },
-        { date: "2024-04-02", time: "20:22", symptoms: "Walking out of tescos" },
-        { date: "2024-04-03", time: "06:05", symptoms: "Sleeping, woke up very short" },
-        { date: "2024-04-03", time: "11:10", symptoms: "In epilepsy clinic" },
-        { date: "2024-04-04", time: "06:00", symptoms: "Sleeping" },
-        { date: "2024-04-04", time: "12:29", symptoms: "Sitting working" },
-        { date: "2024-04-04", time: "18:15", symptoms: "Making dinner" },
-        { date: "2024-04-05", time: "12:50", symptoms: "Sitting round mums" },
-        { date: "2024-04-05", time: "22:30", symptoms: "Standing in bedroom" },
-        { date: "2024-04-11", time: "07:05", symptoms: "Sitting on toilet" },
-        { date: "2024-04-11", time: "18:45", symptoms: "Eating dinner" },
-        { date: "2024-04-12", time: "14:06", symptoms: "Walking" },
-        { date: "2024-04-12", time: "22:42", symptoms: "Just got in bed" },
-        { date: "2024-04-15", time: "17:41", symptoms: "Cooking" },
-        { date: "2024-04-17", time: "14:03", symptoms: "Sitting working" },
-        { date: "2024-04-17", time: "18:05", symptoms: "Standing in kitchen" },
-        { date: "2024-04-17", time: "23:32", symptoms: "Laying going to sleep" },
-        { date: "2024-04-22", time: "07:01", symptoms: "On toliet" },
-        { date: "2024-04-23", time: "17:10", symptoms: "Standing in utility" },
-        { date: "2024-04-25", time: "13:15", symptoms: "Walking dogs" },
-        { date: "2024-04-26", time: "12:30", symptoms: "Standing reading post" },
-        { date: "2024-04-27", time: "00:20", symptoms: "Sleeping" },
-        { date: "2024-04-27", time: "05:21", symptoms: "Sleeping" },
-        { date: "2024-04-29", time: "16:55", symptoms: "Sitting" },
-        { date: "2024-04-30", time: "12:25", symptoms: "Sitting eating" },
-        { date: "2024-05-02", time: "12:15", symptoms: "Having wee" },
-        { date: "2024-05-02", time: "17:23", symptoms: "Making tea" },
-        { date: "2024-05-03", time: "17:05", symptoms: "In car garage" },
-        { date: "2024-05-05", time: "00:01", symptoms: "Sleeping" },
-        { date: "2024-05-06", time: "22:13", symptoms: "Watching TV" },
-        { date: "2024-05-08", time: "16:55", symptoms: "Outside" },
-        { date: "2024-05-16", time: "06:45", symptoms: "Partially sleeping" },
-        { date: "2024-05-16", time: "12:40", symptoms: "Walking around" },
-        { date: "2024-05-16", time: "23:13", symptoms: "" },
-        { date: "2024-05-17", time: "07:59", symptoms: "Walking around" },
-        { date: "2024-05-17", time: "12:21", symptoms: "Exercising, feeling in head" },
-        { date: "2024-05-17", time: "14:40", symptoms: "Sitting working" },
-        { date: "2024-05-17", time: "16:43", symptoms: "Sitting working" },
-        { date: "2024-05-17", time: "18:30", symptoms: "Making dinner" },
-        { date: "2024-05-18", time: "02:31", symptoms: "Sleeping" },
-        { date: "2024-05-23", time: "06:55", symptoms: "Making breakfast" },
-        { date: "2024-05-24", time: "19:05", symptoms: "Walking through house" },
-        { date: "2024-05-25", time: "16:33", symptoms: "In car (shook head)" },
-        { date: "2024-05-27", time: "13:09", symptoms: "Cutting grass" },
-        { date: "2024-05-28", time: "22:07", symptoms: "Standing holding dog" },
-        { date: "2024-05-31", time: "12:50", symptoms: "Walking to toilet" },
-        { date: "2024-06-01", time: "22:13", symptoms: "Walking to toilet" },
-        { date: "2024-06-03", time: "17:00", symptoms: "Drinking tea" },
-        { date: "2024-06-04", time: "20:07", symptoms: "Washing up" },
-        { date: "2024-06-04", time: "08:07", symptoms: "Emptying dishwasher" },
-        { date: "2024-06-09", time: "08:09", symptoms: "Making breakfast" },
-        { date: "2024-06-10", time: "15:18", symptoms: "Shaking head while working" },
-        { date: "2024-06-11", time: "09:30", symptoms: "Walking dogs" },
-        { date: "2024-06-12", time: "12:14", symptoms: "Sitting working" },
-        { date: "2024-06-12", time: "17:25", symptoms: "Just got home from walking dogs" },
-        { date: "2024-06-13", time: "12:29", symptoms: "Sitting working" },
-        { date: "2024-06-13", time: "18:12", symptoms: "Sitting down" },
-        { date: "2024-06-15", time: "18:02", symptoms: "Sitting" },
-        { date: "2024-06-20", time: "08:24", symptoms: "Sitting working" },
-        { date: "2024-06-20", time: "20:14", symptoms: "Washing up" },
-        { date: "2024-06-21", time: "07:27", symptoms: "Making breakfast" },
-        { date: "2024-06-21", time: "17:55", symptoms: "In tesco" },
-        { date: "2024-06-22", time: "15:45", symptoms: "In shed" },
-        { date: "2024-06-29", time: "11:51", symptoms: "" },
-        { date: "2024-07-01", time: "10:05", symptoms: "Making drink" },
-        { date: "2024-07-01", time: "15:12", symptoms: "Working" },
-        { date: "2024-07-01", time: "10:00", symptoms: "Sitting" },
-        { date: "2024-07-02", time: "16:02", symptoms: "Working" },
-        { date: "2024-07-03", time: "12:24", symptoms: "Making lunch" },
-        { date: "2024-07-04", time: "17:00", symptoms: "Weeing" },
-        { date: "2024-07-07", time: "19:30", symptoms: "Walk dogs" },
-        { date: "2024-07-14", time: "19:15", symptoms: "Walking" },
-        { date: "2024-07-14", time: "23:24", symptoms: "Watching TV" },
-        { date: "2024-07-15", time: "06:29", symptoms: "Sleeping luckily" },
-        { date: "2024-07-15", time: "12:05", symptoms: "While sitting" },
-        { date: "2024-07-15", time: "16:33", symptoms: "Working" },
-        { date: "2024-07-15", time: "20:49", symptoms: "Sitting" },
-        { date: "2024-07-16", time: "01:21", symptoms: "Sleeping" },
-        { date: "2024-07-18", time: "14:25", symptoms: "Feeling but not as strong in my head" },
-        { date: "2024-07-26", time: "19:34", symptoms: "Washing up" },
-        { date: "2024-07-27", time: "14:39", symptoms: "Walking around" },
-        { date: "2024-07-28", time: "13:03", symptoms: "Eating lunch" },
-        { date: "2024-07-29", time: "15:05", symptoms: "In wickes, should head etc" },
-        { date: "2024-07-29", time: "20:10", symptoms: "Sitting" },
-        { date: "2024-07-31", time: "08:51", symptoms: "Walking dogs" },
-        { date: "2024-08-08", time: "16:20", symptoms: "Working" },
-        { date: "2024-08-09", time: "13:02", symptoms: "Eating lunch" },
-        { date: "2024-08-10", time: "15:47", symptoms: "Watching TV" },
-        { date: "2024-08-19", time: "15:05", symptoms: "Working" },
-        { date: "2024-08-19", time: "20:47", symptoms: "Driven in car" },
-        { date: "2024-08-20", time: "15:30", symptoms: "Teadmill in gym" },
-        { date: "2024-08-21", time: "16:21", symptoms: "Working" },
-        { date: "2024-08-28", time: "12:42", symptoms: "Making lunch" },
-        { date: "2024-09-03", time: "15:35", symptoms: "Working" },
-        { date: "2024-09-04", time: "07:30", symptoms: "Feeding dogs" },
-        { date: "2024-09-04", time: "15:59", symptoms: "Working" },
-        { date: "2024-09-05", time: "17:56", symptoms: "In kitchen (very mild)" },
-        { date: "2024-09-09", time: "05:25", symptoms: "Sleeping" },
-        { date: "2024-09-25", time: "17:00", symptoms: "Shopping lidl" },
-        { date: "2024-09-26", time: "01:00", symptoms: "Sleeping" },
-        { date: "2024-09-26", time: "03:00", symptoms: "Sleeping" },
-        { date: "2024-09-26", time: "10:59", symptoms: "Working" },
-        { date: "2024-09-26", time: "15:56", symptoms: "Working" },
-        { date: "2024-09-26", time: "20:20", symptoms: "B&M shopping" },
-        { date: "2024-09-27", time: "02:07", symptoms: "Sleeping" },
-        { date: "2024-09-27", time: "16:50", symptoms: "Standing in kitchen" },
-        { date: "2024-10-08", time: "15:55", symptoms: "Mild belly head feeling with PE" },
-        { date: "2024-10-11", time: "16:25", symptoms: "Very mild belly head feeling with PE" },
-        { date: "2024-10-13", time: "16:50", symptoms: "Mild belly head feeling with PE" },
-        { date: "2024-10-27", time: "15:15", symptoms: "Mild belly head feeling with PE" },
-        { date: "2024-10-28", time: "19:45", symptoms: "Mild belly head feeling with PE" },
-        { date: "2024-10-29", time: "16:30", symptoms: "Mild belly head feeling with PE" },
-        { date: "2024-11-05", time: "06:34", symptoms: "Belly head feeling with PE" },
-        { date: "2024-11-06", time: "17:15", symptoms: "On train, same symptoms" },
-        { date: "2024-11-07", time: "11:50", symptoms: "Belly head feeling with PE (stronger)" },
-        { date: "2024-11-07", time: "19:15", symptoms: "Belly head feeling with PE (stronger)" },
-        { date: "2024-11-08", time: "04:10", symptoms: "Belly head feeling with PE (stronger)" },
-        { date: "2024-11-09", time: "17:15", symptoms: "" },
-        { date: "2024-11-14", time: "08:55", symptoms: "Stronger" },
-        { date: "2024-11-16", time: "15:40", symptoms: "" },
-        { date: "2024-11-17", time: "16:58", symptoms: "" },
-        { date: "2024-11-26", time: "17:10", symptoms: "Same as usual" },
-        { date: "2024-11-28", time: "09:15", symptoms: "Same as usual but needing a pooh" },
-        { date: "2024-11-28", time: "18:25", symptoms: "mild" },
-        { date: "2024-12-13", time: "13:17", symptoms: "mild, but lasting longer" },
-        { date: "2024-12-15", time: "17:13", symptoms: "mild" },
-        { date: "2024-12-16", time: "17:07", symptoms: "mild" },
-        { date: "2025-01-06", time: "16:54", symptoms: "mild" },
-        { date: "2025-01-07", time: "15:41", symptoms: "mild" },
-        { date: "2025-01-22", time: "06:05", symptoms: "Half asleep" },
-        { date: "2025-01-28", time: "04:05", symptoms: "Sleeping" },
-        { date: "2025-01-29", time: "21:25", symptoms: "Half asleep" },
-        { date: "2025-01-30", time: "05:00", symptoms: "Half asleep" },
-        { date: "2025-01-30", time: "13:52", symptoms: "Sitting working" },
-        { date: "2025-01-30", time: "19:27", symptoms: "Washing up" },
-        { date: "2025-01-31", time: "17:05", symptoms: "very mild" },
-        { date: "2025-02-05", time: "07:38", symptoms: "mild, lasted longer and arms ached a bit" },
-        { date: "2025-02-07", time: "07:05", symptoms: "mild, lasted longer than last one" },
-        { date: "2025-02-09", time: "07:50", symptoms: "mild, like above, just after finishing pooh" },
-        { date: "2025-02-11", time: "07:32", symptoms: "mild, like above, foggy head afterwards, lasted a while probably because I was trying to ignore it and see if it would go away" },
-        { date: "2025-02-19", time: "06:50", symptoms: "more in belly I think but didn't last very long" },
-        { date: "2025-03-02", time: "07:01", symptoms: "Sleeping" },
-        { date: "2025-03-03", time: "16:23", symptoms: "working needing wee" },
-        { date: "2025-03-15", time: "04:54", symptoms: "Sleeping" },
-        { date: "2025-03-16", time: "06:15", symptoms: "Sleeping" },
-        { date: "2025-03-16", time: "14:05", symptoms: "Drinking tea" },
-        { date: "2025-03-23", time: "20:40", symptoms: "Washing up" },
-        { date: "2025-03-24", time: "07:30", symptoms: "Making breakfast" },
-        { date: "2025-03-27", time: "07:24", symptoms: "Belly, arms, legs willy head a bit" },
-        { date: "2025-04-01", time: "04:00", symptoms: "Sleeping and dreaming about it" },
-        { date: "2025-04-01", time: "07:24", symptoms: "Making dog food, belly mouth legs willy, feeling hot" },
-        { date: "2025-04-02", time: "04:09", symptoms: "Sleeping" },
-        { date: "2025-04-08", time: "07:14", symptoms: "on toilet" },
-        { date: "2025-04-15", time: "07:01", symptoms: "funny belly, poohs first then a minute after" },
-        { date: "2025-04-17", time: "07:35", symptoms: "Making breakfast funny belly then symptoms" },
-        { date: "2025-04-21", time: "07:58", symptoms: "Bad belly, made me feel a little strange, maybe one?" },
-        { date: "2025-04-25", time: "07:14", symptoms: "Bad belly, made me feel a little strange" },
-        { date: "2025-04-30", time: "18:50", symptoms: "Bad belly, made me feel a little strange" },
-        { date: "2025-05-06", time: "08:05", symptoms: "Coming back from walk, need pooh and feel weird for a bit" },
-        { date: "2025-05-07", time: "04:50", symptoms: "In bed, belly then warm feeling etc" },
-        { date: "2025-05-09", time: "00:50", symptoms: "In bed, belly then funny feeling" },
-        { date: "2025-05-10", time: "06:10", symptoms: "In bed, funny feeling and came over all hot" },
-        { date: "2025-05-12", time: "14:48", symptoms: "Usual but feeling very hot" },
-        { date: "2025-05-14", time: "06:55", symptoms: "Having pooh, bell, willy and warm" },
-        { date: "2025-05-15", time: "04:55", symptoms: "Sleeping, belly, will warm sensation" },
-        { date: "2025-05-17", time: "10:10", symptoms: "Outside washing cars" },
-        { date: "2025-05-19", time: "02:00", symptoms: "" },
-        { date: "2025-05-19", time: "08:12", symptoms: "Standing upstairs" },
-        { date: "2025-05-22", time: "07:26", symptoms: "Washing up, belly then strange then weak aching shoulders, erection needing pooh. Weird head and aching shoulders for a bit" },
-        { date: "2025-06-01", time: "07:26", symptoms: "Willy, belly, coming over all hot" },
-        { date: "2025-06-03", time: "07:25", symptoms: "Usual, had to sit down" },
-        { date: "2025-06-07", time: "05:30", symptoms: "" },
-        { date: "2025-06-10", time: "06:20", symptoms: "" },
-        { date: "2025-06-13", time: "06:42", symptoms: "" },
-        { date: "2025-06-18", time: "12:12", symptoms: "Sitting at desk working, came over hot for a while" },
-        { date: "2025-06-23", time: "06:10", symptoms: "Bed" },
-        { date: "2025-06-24", time: "05:40", symptoms: "Bed" },
-        { date: "2025-06-25", time: "14:04", symptoms: "Mild, bowling" },
-        { date: "2025-06-26", time: "09:17", symptoms: "Belly, mild head" },
-        { date: "2025-06-28", time: "14:20", symptoms: "Belly, willy, tescos, head" },
-        { date: "2025-06-29", time: "07:45", symptoms: "Belly, willy, warm just after pooh" },
-        { date: "2025-06-30", time: "08:05", symptoms: "Needing pooh after walk" },
-        { date: "2025-07-01", time: "06:50", symptoms: "Needing pooh, usual belly and strange feeling" },
-        { date: "2025-07-02", time: "08:00", symptoms: "Dog walk, mild" },
-        { date: "2025-08-07", time: "06:20", symptoms: "Bed, belly, warm mild head" },
-        { date: "2025-11-12", time: "06:55", symptoms: "Bed (not sure), belly was going over some time after and I was sleeping so?" },
-        { date: "2025-11-13", time: "04:35", symptoms: "Bed (not sure), again funny belly in the night I think, felt funny maybe not head and willy" },
-        { date: "2025-11-15", time: "09:15", symptoms: "Washing dog, belly, willy feeling hot" },
-        { date: "2025-11-17", time: "07:25", symptoms: "Usual but came over all hot and maybe a bit funny in head" },
-        { date: "2025-11-19", time: "05:40", symptoms: "Usual but stronger" },
-        { date: "2025-11-20", time: "04:50", symptoms: "Usual but was also shaking" },
-        { date: "2025-11-25", time: "07:15", symptoms: "Usual" },
-        { date: "2025-11-27", time: "07:30", symptoms: "Belly, Needing pooh (been 20 minutes before), weird achy shoulders slightly weird in head" },
-        { date: "2025-11-28", time: "07:15", symptoms: "Belly, weird achy shoulders slightly weird in head" },
-        { date: "2025-11-30", time: "06:57", symptoms: "Belly, weird achy shoulders slightly weird in head, willy food related" },
-        { date: "2025-12-01", time: "07:20", symptoms: "Belly, weird achy shoulders slightly weird in head after pooh" },
-        { date: "2025-12-02", time: "07:15", symptoms: "Usual making dog food" },
-        { date: "2025-12-03", time: "07:50", symptoms: "Walking, usual a bit more in head and needing pooh" },
-        { date: "2025-12-04", time: "07:35", symptoms: "Usual" },
-        { date: "2025-12-05", time: "08:05", symptoms: "Walking, usual but not a strong throughout and lasted longer" },
-        { date: "2025-12-06", time: "06:50", symptoms: "Usual but not a strong throughout and lasted longer" },
-        { date: "2025-12-07", time: "08:16", symptoms: "On toilet, usual, belly going over" },
-        { date: "2025-12-08", time: "08:20", symptoms: "Finished breakfast, standing, usual longer" },
-        { date: "2025-12-18", time: "07:20", symptoms: "A few minutes after bowel movement, was bloated before. Was it one?" },
-        { date: "2025-12-27", time: "08:37", symptoms: "Head, belly lasted longer" },
-        { date: "2025-12-28", time: "05:35", symptoms: "Usual" },
-        { date: "2026-01-11", time: "08:38", symptoms: "Belly, need pooh, came over all hot, semi etc" },
-        { date: "2026-01-13", time: "08:10", symptoms: "Walking dog, Belly, need pooh, came over all hot, semi etc" }, 
-        { date: "2026-01-15", time: "08:50", symptoms: "Belly, need pooh, came over all hot, semi etc" },
-        { date: "2026-01-19", time: "06:10", symptoms: "Sleeping, belly willy but didn't notice head" },
-        { date: "2026-01-20", time: "05:20", symptoms: "Sleeping, Usual" },
-        { date: "2026-01-21", time: "06:10", symptoms: "Sleeping, Belly but less aura more real and came over very hot for a while, no head (was this a seizure)?" },
-        { date: "2026-01-23", time: "07:10", symptoms: "Everything but also slightly achey shoulders" },
-        { date: "2026-01-24", time: "09:45", symptoms: "Usual, walking dogs" },
-        { date: "2026-01-25", time: "07:40", symptoms: "Usual outside with dog weeing down side" },
-        { date: "2026-01-27", time: "07:40", symptoms: "Usual but stronger" },
-        { date: "2026-01-28", time: "07:45", symptoms: "Usual" },
-        { date: "2026-02-03", time: "15:40", symptoms: "Mild but longer" },
-        { date: "2026-02-09", time: "07:41", symptoms: "Stronger, and was hot for a while after" },
-        { date: "2026-02-11", time: "07:21", symptoms: "Stronger, and was hot for a while after" },
-        { date: "2026-02-14", time: "07:32", symptoms: "Usual and needing pooh" },
-        { date: "2026-02-17", time: "07:12", symptoms: "Usual, achy shoulders, sat down" },
-        { date: "2026-02-19", time: "07:41", symptoms: "Usual, achy shoulders, stopped doing what I was doing" },
-        { date: "2026-02-20", time: "08:00", symptoms: "Usual, walking dog" },
-        { date: "2026-02-22", time: "08:05", symptoms: "Usual, down side with dog" },
-        { date: "2026-02-25", time: "07:40", symptoms: "Usual then needed pooh" },
-        { date: "2026-02-27", time: "15:25", symptoms: "Usual with needing pooh" },
-        { date: "2026-03-01", time: "08:55", symptoms: "Usual with needing pooh" },
-        { date: "2026-03-08", time: "07:20", symptoms: "Usual but stronger" },
-        { date: "2026-03-16", time: "08:15", symptoms: "Walking dogs" },
-        { date: "2026-03-21", time: "09:15", symptoms: "Sitting" },
-        { date: "2026-03-22", time: "05:30", symptoms: "Sleeping" },
-        { date: "2026-03-24", time: "07:40", symptoms: "Just after poohing" },
-        { date: "2026-03-27", time: "07:35", symptoms: "Usual eating breakfast" },
-        { date: "2026-03-28", time: "08:50", symptoms: "Usual" },
-        { date: "2026-03-30", time: "07:45", symptoms: "Usual" },
-        { date: "2026-04-02", time: "07:35", symptoms: "Usual" },
-        { date: "2026-04-03", time: "09:00", symptoms: "Usual, just before spooning food in" },
-        { date: "2026-04-06", time: "08:35", symptoms: "Usual, just before breakfast" },
-        { date: "2026-04-07", time: "08:45", symptoms: "Usual" },
-        { date: "2026-04-30", time: "23:01", symptoms: "Usual" },
-        { date: "2026-05-09", time: "03:20", symptoms: "Usual" },
-        { date: "2026-05-09", time: "23:25", symptoms: "Usual" },
-        { date: "2026-05-10", time: "14:00", symptoms: "Usual" },
-        { date: "2026-05-14", time: "08:10", symptoms: "Walking dogs, longer and more in head" },
-        { date: "2026-05-15", time: "08:20", symptoms: "Waling dog at sink, stronger and lasted longer, pooh afterwards" },
-        {date: "2026-05-29", time: "04:00", symptoms: "Mild"},
-        {date: "2026-06-01", time: "22:39", symptoms: "Dosing off"},
-        {date: "2026-07-02", time: "05:10", symptoms: "very mild possibly pot one"},
-        {date: "2026-07-03", time: "02:15", symptoms: "mild"},
-        {date: "2026-07-08", time: "05:15", symptoms: "mild"},
-        {date: "2026-07-08", time: "08:20", symptoms: "stronger, backdoor"},
-        {date: "2026-07-09", time: "07:00", symptoms: "stronger, toilet"},
-        {date: "2026-07-09", time: "16:02", symptoms: "short"},
-        {date: "2026-07-10", time: "04:17", symptoms: ""},
-        {date: "2026-07-14", time: "07:40", symptoms: ""},
-        {date: "2026-07-15", time: "08:00", symptoms: ""},
-        {date: "2026-07-16", time: "07:50", symptoms: "laying in bed"},
-        {date: "2026-07-17", time: "10:00", symptoms: "usual need a pooh"},
-        {date: "2026-07-22", time: "07:50", symptoms: "longer, for a while after slightly funny head"},
-         {date: "2026-07-25", time: "08:15", symptoms: "usual more in head emptying dishwasher"},
-        {date: "2026-07-26", time: "07:55", symptoms: "sitting with dogs"},
-        {date: "2026-07-27", time: "07:55", symptoms: "getting breakfast"},
-        {date: "2026-07-31", time: "08:25", symptoms: "walking dogs"},
-        {date: "2026-08-04", time: "17:15", symptoms: "in hospital, no med or sleep changes yet"},
-        {date: "2026-08-07", time: "06:00", symptoms: "in hospital back on full meds"},
-        {date: "2026-08-08", time: "07:00", symptoms: "back home"},
-        {date: "2026-08-09", time: "08:00", symptoms: ""},
-        {date: "2026-08-09", time: "16:45", symptoms: "making a drink"}, 
-        {date: "2026-08-12", time: "06:45", symptoms: ""}, 
-        {date: "2026-08-12", time: "15:21", symptoms: ""}, 
-        {date: "2026-08-13", time: "07:20", symptoms: "a bit longer afterwards"}, 
-        {date: "2026-08-14", time: "07:20", symptoms: ""}, 
-        {date: "2026-08-29", time: "06:30", symptoms: "sleeping"},
-        {date: "2026-09-01", time: "07:45", symptoms: "stronger in head"}, 
-        {date: "2026-09-02", time: "08:00", symptoms: "stronger in head and longer while walking"}, 
-        {date: "2026-09-06", time: "04:10", symptoms: ""}, 
-        {date: "2026-09-07", time: "07:05", symptoms: ""}, 
-        {date: "2026-09-07", time: "08:15", symptoms: ""}, 
-        {date: "2026-09-08", time: "07:30", symptoms: ""}, 
-        {date: "2026-09-08", time: "19:40", symptoms: "walking"}, 
-                {date: "2026-09-11", time: "07:30", symptoms: ""}, 
-                        {date: "2026-09-12", time: "07:50", symptoms: ""}, 
-                                {date: "2026-09-15", time: "08:00", symptoms: "walking"}, 
-                                        {date: "2026-09-23", time: "08:10", symptoms: ""}, 
-                                                {date: "2026-09-28", time: "17:35", symptoms: ""}, 
-        
-
-                                        {date: "2026-09-29", time: "07:30", symptoms: ""}, 
-                                                {date: "2026-10-02", time: "07:50", symptoms: ""}, 
-                                                        {date: "2026-10-04", time: "08:45", symptoms: ""}, 
-        
-        {date: "2026-10-05", time: "07:35", symptoms: ""},
-        {date: "2026-10-06", time: "07:30", symptoms: ""},
-        {date: "2026-10-07", time: "16:55", symptoms: ""},
-                                                                {date: "2026-10-08", time: "07:30", symptoms: ""}, 
-                                                                        {date: "2026-10-09", time: "07:40", symptoms: ""}, 
-                                                                        {date: "2026-10-10", time: "08:10", symptoms: ""}, 
-                                                                                {date: "2026-10-12", time: "08:05", symptoms: ""}, 
-                                                                                        {date: "2026-10-13", time: "07:10", symptoms: ""}, 
-                                                                                                {date: "2026-10-14", time: "06:45", symptoms: "sleeping"}, 
-                                                                                                        {date: "2026-10-27", time: "18:25", symptoms: "sleeping"}, 
-                                                                                                                {date: "2026-11-09", time: "08:05", symptoms: "walking dogs"}, 
-                                                                                                                        {date: "2026-11-11", time: "04:30", symptoms: "walking dogs"}, 
-                                                                                                                                {date: "2026-11-13", time: "08:00", symptoms: ""}, 
-                                                                                                                                        {date: "2026-11-16", time: "18:30", symptoms: ""}, 
-                                                                                                                                {date: "2026-11-17", time: "07:25", symptoms: ""}, 
-                                                                                                                                        {date: "2026-11-18", time: "07:20", symptoms: ""},
-                                                                                                                                                {date: "2026-11-20", time: "07:20", symptoms: ""}, 
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-
-
-
-
-
-
-
-
-
-    ];
-
     const addOneMonthFromStartOfMonth = (date) => {
         return new Date(date.getFullYear(), date.getMonth() + 1, 1);
     };
@@ -566,8 +212,8 @@
         return new Date(date.getFullYear(), date.getMonth() - 1, 1);
     };
 
-    let min = new Date(seizureData[0].date);
-    let max = new Date(seizureData[seizureData.length - 1].date);
+    let min = new Date(seizureData[0][0]);
+    let max = new Date(seizureData[seizureData.length - 1][0]);
 
     while (min < max) {
         let current = addOneMonthFromStartOfMonth(min);
@@ -575,19 +221,14 @@
         min = addOneMonthFromStartOfMonth(min);
         console.log(min)
 
-        if (!seizureData.find(x => x.date.startsWith(datePrefix))) {
-            seizureData.push({
-                date: datePrefix + "01",
-                time: "00:01",
-                symptoms: "Placeholder",
-                placeholder: true
-            });
+        if (!seizureData.find(x => x[0].startsWith(datePrefix))) {
+            seizureData.push([datePrefix + "01", "00:01", "Placeholder", true]);
         }
     }
 
     seizureData.sort((a, b) => {
-        const dateTimeA = new Date(`${a.date}T${a.time}`);
-        const dateTimeB = new Date(`${b.date}T${b.time}`);
+        const dateTimeA = new Date(`${a[0]}T${a[1]}`);
+        const dateTimeB = new Date(`${b[0]}T${b[1]}`);
         return dateTimeA - dateTimeB;
     });
 
@@ -626,9 +267,9 @@
         }
 
         // Calculate unique seizure days per month and total seizures per month
-        const filteredSeizureData = seizureData.filter(x => matchesFilter(from, to, x.date));
+        const filteredSeizureData = seizureData.filter(x => matchesFilter(from, to, x[0]));
 
-        const seizureStats = filteredSeizureData.reduce((acc, { date, placeholder }) => {
+        const seizureStats = filteredSeizureData.reduce((acc, [date, , , placeholder]) => {
             const month = date.slice(0, 7); // Extract the YYYY-MM format
             acc[month] = acc[month] || { uniqueDays: new Set(), totalSeizures: 0 };
             if (!placeholder) {
@@ -794,10 +435,10 @@
         }
 
         // Filter data for the selected month
-        const monthlySeizures = seizureData.filter(({ date }) => date.startsWith(month));
+        const monthlySeizures = seizureData.filter(([date]) => date.startsWith(month));
 
         // Populate table rows with individual seizures in British format (DD/MM/YYYY)
-        monthlySeizures.forEach(({ date, time, symptoms }) => {
+        monthlySeizures.forEach(([date, time, symptoms = ""]) => {
             const [year, month, day] = date.split("-");
             const britishDate = `${day}/${month}/${year}`;
 
